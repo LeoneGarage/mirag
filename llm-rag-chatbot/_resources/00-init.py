@@ -79,6 +79,7 @@ assert float(current_version) >= float(
 spark_checkpoint_location = (
     "dbfs:/scratch/scratch/checkpoint/7bfd3b19-6daf-40aa-87b8-ae798122ac30"
 )
+http_fetch_timeout_secs = 30
 
 # COMMAND ----------
 
@@ -276,8 +277,8 @@ def download_pages(root):
     for url in urls:
         if url.endswith(".xml"):
             print(f"Downloading {url}")
-            response = requests.get(url)
-            root = ET.fromstring(response.content)
+            with requests.get(url, timeout=http_fetch_timeout_secs) as response:
+                root = ET.fromstring(response.content)
             final_urls.extend(download_pages(root))
         else:
             final_urls.append(url)
@@ -374,6 +375,7 @@ def fetch_html(http, url):
             headers={
                 "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
             },
+            timeout=http_fetch_timeout_secs
         ) as response:
             if response.status_code == 200:
                 ct = response.headers.get("Content-Type", None)
@@ -492,7 +494,7 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
             df_with_links_html = (
                 df_with_links.select("url")
                 .withColumn("html_content", col("url"))  # fetch_html_udf("url"))
-                .where("html_content is not null")
+                # .where("html_content is not null")
             )
             df_with_html = df_with_links_html
             final_df_with_html = final_df_with_html.unionAll(
@@ -526,8 +528,8 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
 def download_documentation_article(url, max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
-    response = requests.get(url)
-    root = ET.fromstring(response.content)
+    with requests.get(url, timeout=http_fetch_timeout_secs) as response:
+        root = ET.fromstring(response.content)
 
     # Find all 'loc' elements (URLs) in the XML
     urls = download_pages(root)
