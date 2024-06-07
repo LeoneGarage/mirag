@@ -125,12 +125,12 @@ response = serving_client.query(
     name=serving_endpoint_name,
     inputs=[{
         "messages": [
-            {"role": "user", "content": "What is SafetyCulture"},
+            {"role": "user", "content": "What is Company A"},
             {
                 "role": "assistant",
-                "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections.",
+                "content": "Company A is a company that provides applications for software developers.",
             },
-            {"role": "user", "content": "Does it support creating custom templates?"},
+            {"role": "user", "content": "Does it support creating projects?"},
         ]
     }]
 )
