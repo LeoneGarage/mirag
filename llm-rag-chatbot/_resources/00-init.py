@@ -387,9 +387,9 @@ def fetch_html(http, url):
 def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     num_iterations_to_checkpoint = max(1, num_iterations_to_checkpoint)
     # Create DataFrame from URLs
-    urls_rdd = sc.parallelize(urls, 200)
+    urls_rdd = sc.parallelize(urls, 5000)
     df_urls = (
-        spark.createDataFrame(urls_rdd, StringType()).toDF("url").repartition(5000)
+        spark.createDataFrame(urls_rdd, StringType()).toDF("url").repartition(5000, "url")
     )
 
     # Pandas UDF to fetch HTML content for a batch of URLs
