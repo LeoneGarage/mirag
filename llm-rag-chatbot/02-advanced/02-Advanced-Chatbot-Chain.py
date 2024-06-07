@@ -4,6 +4,7 @@ dbutils.widgets.text("sitemap_urls", "", "URLs separated by comma of sitemap.xml
 dbutils.widgets.text("accepted_domains", "", "Domain part of urls to process, separated by comma")
 dbutils.widgets.text("catalog", "", "Catalog name where data and vector search are stored")
 dbutils.widgets.text("schema_name", "", "Schema name where data and vector search are stored")
+dbutils.widgets.text("model_prompt", "You are a trustful assistant for SafetyCulture Application users, customers, as well as SafetyCulture company. You are answering questions about SafetyCulture, SafetyCulture concepts, SafetyCulture people, SafetyCulture Inspections, SafetyCulture company, SafetyCulture Application, or other SafetyCulture topics and other information related to SafetyCulture. If SafetyCulture word appears by itself, assume the question is about the company. If SafetyCulture word is not in the question, assume the question is about SafetyCulture company and SafetyCulture related topics", "Prompt for LLM Model")
 
 # COMMAND ----------
 
@@ -45,6 +46,10 @@ dbutils.widgets.text("schema_name", "", "Schema name where data and vector searc
 
 # COMMAND ----------
 
+model_prompt = dbutils.widgets.get("model_prompt")
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC ## Exploring Langchain capabilities
 # MAGIC
@@ -70,7 +75,7 @@ chain = (
   | chat_model
   | StrOutputParser()
 )
-print(chain.invoke({"question": "What is SafetyCulture?"}))
+print(chain.invoke({"question": "What is apps does it provide?"}))
 
 # COMMAND ----------
 
@@ -80,7 +85,7 @@ print(chain.invoke({"question": "What is SafetyCulture?"}))
 # COMMAND ----------
 
 prompt_with_history_str = """
-You are a chatbot for SafetyCulture users and customers and SafetyCulture company. You are answering all questions related to SafetyCulture, SafetyCulture people, SafetyCulture Inspections, SafetyCulture company, SafetyCulture Application, or other SafetyCulture topics. If SafetyCulture word appears by itself, assume the question is about the company. If the question is not related to one of these topics, kindly decline to answer. If you don't know the answer, just say that you don't know, don't try to make up an answer. Keep the answer as detailed as possible.
+{model_prompt}. If the question is not related to one of these topics, kindly decline to answer. If you don't know the answer, just say that you don't know, don't try to make up an answer. Keep the answer as detailed as possible.
 
 Here is a history between you and a human: {chat_history}
 
@@ -132,8 +137,8 @@ chain_with_history = (
 
 print(chain_with_history.invoke({
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}, 
-        {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and site inspections"}, 
+        {"role": "user", "content": "What is Company A?"}, 
+        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and site inspections"}, 
         {"role": "user", "content": "Does it support creating custom templates?"}
     ]
 }))
@@ -154,27 +159,27 @@ chat_model = ChatDatabricks(endpoint="databricks-dbrx-instruct", max_tokens = 50
     "top_p": 0.95
   })
 
-is_question_about_safetyculture_str = """
-You are classifying documents to know if this question is related with SafetyCulture Application users and customers, as well as SafetyCulture company, SafetyCulture concepts, SafetyCulture employees, SafetyCulture people, SafetyCulture Inspections, SafetyCulture company, SafetyCulture Application, other SafetyCulture topics and other information related with SafetyCulture, or something from a very different field. Also answer no if the last part is inappropriate. If SafetyCulture word appears by itself, assume the question is about the company. Do not add explanation to the answer. Also answer questions if they are in relation to altering responses with different style or humor or rhyming.
+is_question_about_topic_str = """
+You are classifying documents to know if this question is related with Company A Application users and customers, as well as Company A company, Company A concepts, Company A employees, Company A people, Company A Inspections, Company A company, Company A Application, other Company A topics and other information related with Company A, or something from a very different field. Also answer no if the last part is inappropriate. If Company A word appears by itself, assume the question is about the company. Do not add explanation to the answer. Also answer questions if they are in relation to altering responses with different style or humor or rhyming.
 
 Here are some examples:
 
-Question: Knowing this followup history: What is SafetyCulture?, classify this question: Do you have more details?
+Question: Knowing this followup history: What is Company A?, classify this question: Do you have more details?
 Expected Response: Yes
 
-Knowing this followup history: What is SafetyCulture?, classify this question: what is the revenue
+Knowing this followup history: What is Company A?, classify this question: what is the revenue
 Expected Response: Yes
 
-Question: Knowing this followup history: What is SafetyCulture?, classify this question: what jobs are advertised
+Question: Knowing this followup history: What is Company A?, classify this question: what jobs are advertised
 Expected Response: Yes
 
-Question: Knowing this followup history: What is SafetyCulture?, classify this question: Say it with humour
+Question: Knowing this followup history: What is Company A?, classify this question: Say it with humour
 Expected Response: Yes
 
-Question: Knowing this followup history: What is SafetyCulture?, classify this question: Say it as a limerick
+Question: Knowing this followup history: What is Company A?, classify this question: Say it as a limerick
 Expected Response: Yes
 
-Question: Knowing this followup history: What is SafetyCulture?, classify this question: What is NUIX?.
+Question: Knowing this followup history: What is Company A?, classify this question: What is NUIX?.
 Expected Response: No
 
 Only answer with "yes" or "no". 
@@ -182,36 +187,36 @@ Only answer with "yes" or "no".
 Knowing this followup history: {chat_history}, classify this question: {question}
 """
 
-is_question_about_safetyculture_prompt = PromptTemplate(
+is_question_about_topic_prompt = PromptTemplate(
   input_variables= ["chat_history", "question"],
-  template = is_question_about_safetyculture_str
+  template = is_question_about_topic_str
 )
 
-is_about_safetyculture_chain = (
+is_about_topic_chain = (
     {
         "question": itemgetter("messages") | RunnableLambda(extract_question),
         "chat_history": itemgetter("messages") | RunnableLambda(extract_history),
     }
-    | is_question_about_safetyculture_prompt
+    | is_question_about_topic_prompt
     | chat_model
     | StrOutputParser()
 )
 
 #Returns "Yes" as this is about Databricks: 
-print(is_about_safetyculture_chain.invoke({
+print(is_about_topic_chain.invoke({
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}, 
-        {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections"}, 
+        {"role": "user", "content": "What is Company A?"}, 
+        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections"}, 
         {"role": "user", "content": "Does it support creating custom templates?"}
     ]
 }))
 
 # COMMAND ----------
 
-# print(is_about_safetyculture_chain.invoke({
+# print(is_about_topic_chain.invoke({
 #     "messages": [
-#         {"role": "user", "content": "What is SafetyCulture?"}, 
-#         {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections"}, 
+#         {"role": "user", "content": "What is Company A?"}, 
+#         {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections"}, 
 #         {"role": "user", "content": "who is the coo"}
 #     ]
 # }))
@@ -219,7 +224,7 @@ print(is_about_safetyculture_chain.invoke({
 # COMMAND ----------
 
 #Return "no" as this isn't about Databricks
-print(is_about_safetyculture_chain.invoke({
+print(is_about_topic_chain.invoke({
     "messages": [
         {"role": "user", "content": "What is the meaning of life?"}
     ]
@@ -333,7 +338,7 @@ retrieve_document_chain = (
     | RunnableLambda(extract_question)
     | retriever
 )
-print(retrieve_document_chain.invoke({"messages": [{"role": "user", "content": "What is SafetyCulture?"}]}))
+print(retrieve_document_chain.invoke({"messages": [{"role": "user", "content": "What is Company A?"}]}))
 
 # COMMAND ----------
 
@@ -377,15 +382,15 @@ generate_query_to_retrieve_context_chain = (
 #Let's try it
 output = generate_query_to_retrieve_context_chain.invoke({
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}
+        {"role": "user", "content": "What is Company A?"}
     ]
 })
 print(f"Test retriever query without history: {output}")
 
 output = generate_query_to_retrieve_context_chain.invoke({
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}, 
-        {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections."}, 
+        {"role": "user", "content": "What is Company A?"}, 
+        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
         {"role": "user", "content": "Does it support creating custom templates?"}
     ]
 })
@@ -412,7 +417,7 @@ print(f"Test retriever question, summarized with history: {output}")
 from langchain.schema.runnable import RunnableBranch, RunnableParallel, RunnablePassthrough
 
 question_with_history_and_context_str = """
-You are a trustful assistant for SafetyCulture Application users, customers, as well as SafetyCulture company. You are answering questions about SafetyCulture, SafetyCulture concepts, SafetyCulture people, SafetyCulture Inspections, SafetyCulture company, SafetyCulture Application, or other SafetyCulture topics and other information related to SafetyCulture. If SafetyCulture word appears by itself, assume the question is about the company. If SafetyCulture word is not in the question, assume the question is about SafetyCulture company and SafetyCulture related topics. If you do not know the answer to a question, you truthfully say you do not know. Read the discussion to get the context of the previous conversation. In the chat discussion, you are referred to as "assistant". The user is referred to as "user".
+{model_prompt}. If you do not know the answer to a question, you truthfully say you do not know. Read the discussion to get the context of the previous conversation. In the chat discussion, you are referred to as "assistant". The user is referred to as "user".
 
 Discussion: {chat_history}
 
@@ -477,7 +482,7 @@ relevant_question_chain = (
 )
 
 irrelevant_question_chain = (
-  RunnableLambda(lambda x: {"result": 'I cannot answer questions that are not about SafetyCulture.', "sources": []})
+  RunnableLambda(lambda x: {"result": 'I cannot answer questions that are not about Company A.', "sources": []})
 )
 
 # branch_node = RunnableBranch(
@@ -490,7 +495,7 @@ branch_node = relevant_question_chain
 
 full_chain = (
   {
-    "question_is_relevant": is_about_safetyculture_chain,
+    "question_is_relevant": is_about_topic_chain,
     "model": is_about_model_chain,
     "question": itemgetter("messages") | RunnableLambda(extract_question),
     "chat_history": itemgetter("messages") | RunnableLambda(extract_history)
@@ -509,8 +514,8 @@ full_chain = (
 import json
 non_relevant_dialog = {
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}, 
-        {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections."}, 
+        {"role": "user", "content": "What is Company A?"}, 
+        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
         {"role": "user", "content": "Why is the sky blue?"}
     ]
 }
@@ -523,8 +528,8 @@ display_chat(non_relevant_dialog["messages"], response)
 # DBTITLE 1,Asking a relevant question
 dialog = {
     "messages": [
-        {"role": "user", "content": "What is SafetyCulture?"}, 
-        {"role": "assistant", "content": "SafetyCulture is a company that provides tooling and applications for workplace safety and sire inspections."}, 
+        {"role": "user", "content": "What is Company A?"}, 
+        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
         {"role": "user", "content": "Does it support creating custom templates?"}
     ]
 }
@@ -606,8 +611,8 @@ model.invoke(dialog)
 
 # dialog = {
 #     "messages": [
-#         {"role": "user", "content": "What is SafetyCulture?"}, 
-#         {"role": "assistant", "content": "SafetyCulture is a digital workplace software designed to help IT managers, digital workplace managers, HR teams, and employee experience teams manage their teams effectively, automate manual processes, and ensure organizational compliance. It offers customizable digital forms, a central hub for communication, employee training and certification tracking, task progress monitoring, and safety audits, hazard checklists, and incident reporting features. It's available on both mobile app (iOS and Android) and web-based software. SafetyCulture is best for businesses prioritizing safety and health of their employees, applicable across all industries and useful for various sectors, regardless of size. It emphasizes user convenience by offering ready-to-use templates, real-time corrective actions, efficient recordkeeping, and insightful analytics."}, 
+#         {"role": "user", "content": "What is Company A?"}, 
+#         {"role": "assistant", "content": "Company A is a digital workplace software designed to help IT managers, digital workplace managers, HR teams, and employee experience teams manage their teams effectively, automate manual processes, and ensure organizational compliance. It offers customizable digital forms, a central hub for communication, employee training and certification tracking, task progress monitoring, and safety audits, hazard checklists, and incident reporting features. It's available on both mobile app (iOS and Android) and web-based software. Company A is best for businesses prioritizing safety and health of their employees, applicable across all industries and useful for various sectors, regardless of size. It emphasizes user convenience by offering ready-to-use templates, real-time corrective actions, efficient recordkeeping, and insightful analytics."}, 
 #         {"role": "user", "content": "make it rhyme"}
 #     ]
 # }
