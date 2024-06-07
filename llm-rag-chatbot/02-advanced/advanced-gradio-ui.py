@@ -1,6 +1,11 @@
 # Databricks notebook source
 dbutils.widgets.text("catalog", "", "Catalog name where data and vector search are stored")
 dbutils.widgets.text("schema_name", "", "Schema name where data and vector search are stored")
+dbutils.widgets.text("logo_url", "", "Url of logo image")
+dbutils.widgets.text("example_q1", "", "Example Question 1")
+dbutils.widgets.text("example_q2", "", "Example Question 2")
+dbutils.widgets.text("example_q3", "", "Example Question 3")
+dbutils.widgets.text("example_q4", "", "Example Question 4")
 
 # COMMAND ----------
 
@@ -9,6 +14,11 @@ dbutils.widgets.text("schema_name", "", "Schema name where data and vector searc
 # COMMAND ----------
 
 catalog = dbutils.widgets.get("catalog")
+logo_url = dbutils.widgets.get("logo_url")
+example_q1 = [dbutils.widgets.get("example_q1").strip()]
+example_q2 = [dbutils.widgets.get("example_q2").strip()]
+example_q3 = [dbutils.widgets.get("example_q3").strip()]
+example_q4 = [dbutils.widgets.get("example_q4").strip()]
 
 # COMMAND ----------
 
@@ -28,7 +38,6 @@ import requests
 import os
 from gradio.themes.utils import sizes
 
-logo_url = "https://i.ibb.co/gvhkpDL/37ba1cff6995353f53a8879424f963f3.jpg"
 css = f"""
 body {{
     font-family: Arial, sans-serif;
@@ -119,10 +128,10 @@ ci = gr.ChatInterface(
                        container=False, scale=7),
     # title="Databricks SafetyCulture LLM RAG demo - Chat with DBRX Databricks model serving endpoint about SafetyCulture",
     description="This chatbot is a demo example for SafetyCulture LLM chatbot. <br>This content is provided as a LLM RAG educational example, without support. It is using DBRX, has not been tested and should not be used as production content",
-    examples=[["What is SafetyCulture?"],
-              ["How can I create an Inspection Template?"],
-              ["What is an Inspection Report?"],
-              ["What should I put into an Inspection Template for a construction site with the app?"],],
+    examples=[example_q1,
+              example_q2,
+              example_q3,
+              example_q4],
     cache_examples=False,
     css=css,
     theme=theme,
@@ -140,7 +149,11 @@ demo.launch(share=True)
 # COMMAND ----------
 
 # Write a dummy files for streaming to consume and block
-dbutils.fs.put("dbfs:/empty/files/dummy.csv", "nothing,nothing", True)
+dbutils.fs.put(f"dbfs:/empty/{catalog}/files/dummy.csv", "nothing,nothing", True)
+
+# COMMAND ----------
+
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.empty")
 
 # COMMAND ----------
 
@@ -148,15 +161,11 @@ stream = (
   spark.readStream
      .format("cloudFiles")
      .option("cloudFiles.format", "csv")
-     .option("cloudFiles.schemaLocation", "dbfs:/empty/schema")
+     .option("cloudFiles.schemaLocation", f"dbfs:/empty/{catalog}/schema")
      .option("cloudFiles.useIncrementalListing", "auto")
-     .load("dbfs:/empty/files")
+     .load(f"dbfs:/empty/{catalog}/files")
      .writeStream
-     .option("checkpointLocation", "dbfs:/empty/cp")
-     .trigger(processingTime='5 minutes')
+     .option("checkpointLocation", f"dbfs:/empty/{catalog}/cp")
+     .trigger(processingTime='60 minutes')
      .table(f"`{catalog}`.empty.dummy_data")
 )
-
-# COMMAND ----------
-
-dbutils.fs.ls("s3a://sc-data/")
