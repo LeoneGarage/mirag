@@ -84,12 +84,12 @@ print(chain.invoke({"question": "What is apps does it provide?"}))
 
 # COMMAND ----------
 
-prompt_with_history_str = """
+prompt_with_history_str = f"""
 {model_prompt}. If the question is not related to one of these topics, kindly decline to answer. If you don't know the answer, just say that you don't know, don't try to make up an answer. Keep the answer as detailed as possible.
 
-Here is a history between you and a human: {chat_history}
+Here is a history between you and a human: {{chat_history}}
 
-Now, please answer this question: {question}
+Now, please answer this question: {{question}}
 """
 
 prompt_with_history = PromptTemplate(
@@ -179,7 +179,7 @@ Expected Response: Yes
 Question: Knowing this followup history: What is Company A?, classify this question: Say it as a limerick
 Expected Response: Yes
 
-Question: Knowing this followup history: What is Company A?, classify this question: What is NUIX?.
+Question: Knowing this followup history: What is Company A?, classify this question: What is TCP?.
 Expected Response: No
 
 Only answer with "yes" or "no". 
@@ -416,16 +416,16 @@ print(f"Test retriever question, summarized with history: {output}")
 
 from langchain.schema.runnable import RunnableBranch, RunnableParallel, RunnablePassthrough
 
-question_with_history_and_context_str = """
+question_with_history_and_context_str = f"""
 {model_prompt}. If you do not know the answer to a question, you truthfully say you do not know. Read the discussion to get the context of the previous conversation. In the chat discussion, you are referred to as "assistant". The user is referred to as "user".
 
-Discussion: {chat_history}
+Discussion: {{chat_history}}
 
-Here's some context which might or might not help you answer: {context}
+Here's some context which might or might not help you answer: {{context}}
 
 Answer straight, do not repeat the question, do not start with something like: the answer to the question, do not add "AI" in front of your answer, do not say: here is the answer, do not mention the context or the question.
 
-Based on this history and context, answer this question: {question}
+Based on this history and context, answer this question: {{question}}
 """
 
 question_with_history_and_context_prompt = PromptTemplate(
