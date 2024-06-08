@@ -1,9 +1,15 @@
 # Databricks notebook source
 dbutils.widgets.text("vs_endpoint_name", "", "Vector Search Endpoint Name")
 dbutils.widgets.text("sitemap_urls", "", "URLs separated by comma of sitemap.xml")
-dbutils.widgets.text("accepted_domains", "", "Domain part of urls to process, separated by comma")
-dbutils.widgets.text("catalog", "", "Catalog name where data and vector search are stored")
-dbutils.widgets.text("schema_name", "", "Schema name where data and vector search are stored")
+dbutils.widgets.text(
+    "accepted_domains", "", "Domain part of urls to process, separated by comma"
+)
+dbutils.widgets.text(
+    "catalog", "", "Catalog name where data and vector search are stored"
+)
+dbutils.widgets.text(
+    "schema_name", "", "Schema name where data and vector search are stored"
+)
 
 # COMMAND ----------
 
@@ -71,8 +77,8 @@ dbutils.widgets.text("schema_name", "", "Schema name where data and vector searc
 if not table_exists("raw_documentation") or spark.table("raw_documentation").isEmpty():
     # Download Databricks documentation to a DataFrame (see _resources/00-init for more details)
     doc_articles = download_documentation_articles()
-    #Save them as a raw_documentation table
-    doc_articles.write.mode('overwrite').saveAsTable("raw_documentation")
+    # Save them as a raw_documentation table
+    doc_articles.write.mode("overwrite").saveAsTable("raw_documentation")
 
 # display(spark.table("raw_documentation").limit(2))
 
@@ -126,47 +132,64 @@ if not table_exists("raw_documentation") or spark.table("raw_documentation").isE
 # COMMAND ----------
 
 # DBTITLE 1,Splitting our html pages in smaller chunks
-from langchain.text_splitter import HTMLHeaderTextSplitter, RecursiveCharacterTextSplitter
+from langchain.text_splitter import (
+    HTMLHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 from transformers import AutoTokenizer, OpenAIGPTTokenizer
 
 max_chunk_size = 500
 
 tokenizer = OpenAIGPTTokenizer.from_pretrained("openai-gpt")
-text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(tokenizer, chunk_size=max_chunk_size, chunk_overlap=50)
-html_splitter = HTMLHeaderTextSplitter(headers_to_split_on=[("h1", "header1"), ("h2", "header2"), ("h3", "header3"), ("h4", "header4"), ("h5", "header5"), ("h6", "header6")])
+text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+    tokenizer, chunk_size=max_chunk_size, chunk_overlap=50
+)
+html_splitter = HTMLHeaderTextSplitter(
+    headers_to_split_on=[
+        ("h1", "header1"),
+        ("h2", "header2"),
+        ("h3", "header3"),
+        ("h4", "header4"),
+        ("h5", "header5"),
+        ("h6", "header6"),
+    ]
+)
+
 
 def empty_for_none(s):
-  if s is None:
-    return ""
-  return s
+    if s is None:
+        return ""
+    return s
 
-# Split on H2, but merge small h2 chunks together to avoid too small. 
-def split_html_on_h2(html, min_chunk_size = 20, max_chunk_size=500):
-  if not html:
-      return []
-  h2_chunks = html_splitter.split_text(html)
-  chunks = []
-  previous_chunk = ""
-  # Merge chunks together to add text before h2 and avoid too small docs.
-  for c in h2_chunks:
-    # Concat the h2 (note: we could remove the previous chunk to avoid duplicate h2)
-    content = empty_for_none(c.metadata.get('header1', ""))
-    content += empty_for_none(c.metadata.get('header2', ""))
-    content += empty_for_none(c.metadata.get('header3', ""))
-    content += empty_for_none(c.metadata.get('header4', ""))
-    content += empty_for_none(c.metadata.get('header5', ""))
-    content += empty_for_none(c.metadata.get('header6', "")) + "\n"
-    content += empty_for_none(c.page_content)
-    if len(tokenizer.encode(previous_chunk + content)) <= max_chunk_size/2:
-        previous_chunk += content + "\n"
-    else:
+
+# Split on H2, but merge small h2 chunks together to avoid too small.
+def split_html_on_h2(html, min_chunk_size=20, max_chunk_size=500):
+    if not html:
+        return []
+    h2_chunks = html_splitter.split_text(html)
+    chunks = []
+    previous_chunk = ""
+    # Merge chunks together to add text before h2 and avoid too small docs.
+    for c in h2_chunks:
+        # Concat the h2 (note: we could remove the previous chunk to avoid duplicate h2)
+        content = empty_for_none(c.metadata.get("header1", ""))
+        content += empty_for_none(c.metadata.get("header2", ""))
+        content += empty_for_none(c.metadata.get("header3", ""))
+        content += empty_for_none(c.metadata.get("header4", ""))
+        content += empty_for_none(c.metadata.get("header5", ""))
+        content += empty_for_none(c.metadata.get("header6", "")) + "\n"
+        content += empty_for_none(c.page_content)
+        if len(tokenizer.encode(previous_chunk + content)) <= max_chunk_size / 2:
+            previous_chunk += content + "\n"
+        else:
+            chunks.extend(text_splitter.split_text(previous_chunk.strip()))
+            previous_chunk = content + "\n"
+    if previous_chunk:
         chunks.extend(text_splitter.split_text(previous_chunk.strip()))
-        previous_chunk = content + "\n"
-  if previous_chunk:
-      chunks.extend(text_splitter.split_text(previous_chunk.strip()))
-  # Discard too small chunks
-  return [c for c in chunks if len(tokenizer.encode(c)) > min_chunk_size]
- 
+    # Discard too small chunks
+    return [c for c in chunks if len(tokenizer.encode(c)) > min_chunk_size]
+
+
 # Let's try our chunking function
 # html = spark.table("raw_documentation").limit(1).collect()[0]['text']
 # split_html_on_h2(html)
@@ -189,7 +212,7 @@ def split_html_on_h2(html, min_chunk_size = 20, max_chunk_size=500):
 # MAGIC   id BIGINT GENERATED BY DEFAULT AS IDENTITY,
 # MAGIC   url STRING,
 # MAGIC   content STRING
-# MAGIC ) TBLPROPERTIES (delta.enableChangeDataFeed = true); 
+# MAGIC ) TBLPROPERTIES (delta.enableChangeDataFeed = true);
 
 # COMMAND ----------
 
@@ -198,12 +221,17 @@ def split_html_on_h2(html, min_chunk_size = 20, max_chunk_size=500):
 def parse_and_split(docs: pd.Series) -> pd.Series:
     return docs.apply(split_html_on_h2)
 
+
 if not table_exists("documentation") or spark.table("documentation").isEmpty():
-    (spark.table("raw_documentation").repartition(1000)
-        .filter('text is not null')
-        .withColumn('content', F.explode(parse_and_split('text')))
+    (
+        spark.table("raw_documentation")
+        .repartition(1000)
+        .filter("text is not null")
+        .withColumn("content", F.explode(parse_and_split("text")))
         .drop("text")
-        .write.mode('overwrite').saveAsTable("documentation"))
+        .write.mode("overwrite")
+        .saveAsTable("documentation")
+    )
 
 display(spark.table("documentation"))
 
@@ -247,11 +275,14 @@ display(spark.table("documentation"))
 
 # DBTITLE 1,What is an embedding
 import mlflow.deployments
+
 deploy_client = mlflow.deployments.get_deploy_client("databricks")
 
-#Embeddings endpoints convert text into a vector (array of float). Here is an example using BGE:
-response = deploy_client.predict(endpoint="databricks-bge-large-en", inputs={"input": ["What is Apache Spark?"]})
-embeddings = [e['embedding'] for e in response.data]
+# Embeddings endpoints convert text into a vector (array of float). Here is an example using BGE:
+response = deploy_client.predict(
+    endpoint="databricks-bge-large-en", inputs={"input": ["What is Apache Spark?"]}
+)
+embeddings = [e["embedding"] for e in response.data]
 print(embeddings)
 
 # COMMAND ----------
@@ -274,6 +305,7 @@ print(embeddings)
 
 # DBTITLE 1,Creating the Vector Search endpoint
 from databricks.vector_search.client import VectorSearchClient
+
 vsc = VectorSearchClient()
 
 if not endpoint_exists(vsc, VECTOR_SEARCH_ENDPOINT_NAME):
@@ -306,28 +338,30 @@ print(f"Endpoint named {VECTOR_SEARCH_ENDPOINT_NAME} is ready.")
 from databricks.sdk import WorkspaceClient
 import databricks.sdk.service.catalog as c
 
-#The table we'd like to index
+# The table we'd like to index
 source_table_fullname = f"{catalog}.{db}.documentation"
 # Where we want to store our index
 vs_index_fullname = f"{catalog}.{db}.documentation_vs_index"
 
 if not index_exists(vsc, VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname):
-  print(f"Creating index {vs_index_fullname} on endpoint {VECTOR_SEARCH_ENDPOINT_NAME}...")
-  vsc.create_delta_sync_index(
-    endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME,
-    index_name=vs_index_fullname,
-    source_table_name=source_table_fullname,
-    pipeline_type="TRIGGERED",
-    primary_key="id",
-    embedding_source_column='content', #The column containing our text
-    embedding_model_endpoint_name='databricks-bge-large-en' #The embedding endpoint used to create the embeddings
-  )
-  #Let's wait for the index to be ready and all our embeddings to be created and indexed
-  wait_for_index_to_be_ready(vsc, VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname)
+    print(
+        f"Creating index {vs_index_fullname} on endpoint {VECTOR_SEARCH_ENDPOINT_NAME}..."
+    )
+    vsc.create_delta_sync_index(
+        endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME,
+        index_name=vs_index_fullname,
+        source_table_name=source_table_fullname,
+        pipeline_type="TRIGGERED",
+        primary_key="id",
+        embedding_source_column="content",  # The column containing our text
+        embedding_model_endpoint_name="databricks-bge-large-en",  # The embedding endpoint used to create the embeddings
+    )
+    # Let's wait for the index to be ready and all our embeddings to be created and indexed
+    wait_for_index_to_be_ready(vsc, VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname)
 else:
-  #Trigger a sync to update our vs content with the new data saved in the table
-  wait_for_index_to_be_ready(vsc, VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname)
-  vsc.get_index(VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname).sync()
+    # Trigger a sync to update our vs content with the new data saved in the table
+    wait_for_index_to_be_ready(vsc, VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname)
+    vsc.get_index(VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname).sync()
 
 print(f"index {vs_index_fullname} on table {source_table_fullname} is ready")
 
@@ -347,15 +381,15 @@ print(f"index {vs_index_fullname} on table {source_table_fullname} is ready")
 # COMMAND ----------
 
 import mlflow.deployments
+
 deploy_client = mlflow.deployments.get_deploy_client("databricks")
 
 question = "How much does it cost?"
 
-results = vsc.get_index(VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname).similarity_search(
-  query_text=question,
-  columns=["url", "content"],
-  num_results=1)
-docs = results.get('result', {}).get('data_array', [])
+results = vsc.get_index(
+    VECTOR_SEARCH_ENDPOINT_NAME, vs_index_fullname
+).similarity_search(query_text=question, columns=["url", "content"], num_results=1)
+docs = results.get("result", {}).get("data_array", [])
 docs
 
 # COMMAND ----------

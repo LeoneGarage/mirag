@@ -278,7 +278,13 @@ def download_pages(root):
     for url in urls:
         if url.endswith(".xml") or url.endswith(".xml.gz"):
             print(f"Downloading {url}")
-            with requests.get(url, timeout=http_fetch_timeout_secs) as response:
+            with requests.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                },
+                timeout=http_fetch_timeout_secs,
+            ) as response:
                 ct = response.headers.get("Content-Type", None)
                 content = response.content
                 if ct and "application/x-gzip" in ct:
@@ -380,7 +386,7 @@ def fetch_html(http, url):
             headers={
                 "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
             },
-            timeout=http_fetch_timeout_secs
+            timeout=http_fetch_timeout_secs,
         ) as response:
             if response.status_code == 200:
                 ct = response.headers.get("Content-Type", None)
@@ -396,7 +402,9 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     # Create DataFrame from URLs
     urls_rdd = sc.parallelize(urls, 5000)
     df_urls = (
-        spark.createDataFrame(urls_rdd, StringType()).toDF("url").repartition(5000, "url")
+        spark.createDataFrame(urls_rdd, StringType())
+        .toDF("url")
+        .repartition(5000, "url")
     )
 
     # Pandas UDF to fetch HTML content for a batch of URLs
@@ -497,8 +505,9 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
             df_with_links = df_with_links.checkpoint()
         if not df_with_links.isEmpty():
             df_with_links_html = (
-                df_with_links.select("url")
-                .withColumn("html_content", col("url"))  # fetch_html_udf("url"))
+                df_with_links.select("url").withColumn(
+                    "html_content", col("url")
+                )  # fetch_html_udf("url"))
                 # .where("html_content is not null")
             )
             df_with_html = df_with_links_html
@@ -533,7 +542,13 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
 def download_documentation_article(url, max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
-    with requests.get(url, timeout=http_fetch_timeout_secs) as response:
+    with requests.get(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+        },
+        timeout=http_fetch_timeout_secs,
+    ) as response:
         ct = response.headers.get("Content-Type", None)
         content = response.content
         if ct and "application/x-gzip" in ct:

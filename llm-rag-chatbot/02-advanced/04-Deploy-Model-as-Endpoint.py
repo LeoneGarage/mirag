@@ -1,9 +1,15 @@
 # Databricks notebook source
 dbutils.widgets.text("vs_endpoint_name", "", "Vector Search Endpoint Name")
 dbutils.widgets.text("sitemap_urls", "", "URLs separated by comma of sitemap.xml")
-dbutils.widgets.text("accepted_domains", "", "Domain part of urls to process, separated by comma")
-dbutils.widgets.text("catalog", "", "Catalog name where data and vector search are stored")
-dbutils.widgets.text("schema_name", "", "Schema name where data and vector search are stored")
+dbutils.widgets.text(
+    "accepted_domains", "", "Domain part of urls to process, separated by comma"
+)
+dbutils.widgets.text(
+    "catalog", "", "Catalog name where data and vector search are stored"
+)
+dbutils.widgets.text(
+    "schema_name", "", "Schema name where data and vector search are stored"
+)
 
 # COMMAND ----------
 
@@ -61,17 +67,21 @@ import urllib
 import json
 import mlflow
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.serving import EndpointCoreConfigInput, ServedModelInput, ServedModelInputWorkloadSize
+from databricks.sdk.service.serving import (
+    EndpointCoreConfigInput,
+    ServedModelInput,
+    ServedModelInputWorkloadSize,
+)
 from datetime import timedelta
 
-mlflow.set_registry_uri('databricks-uc')
+mlflow.set_registry_uri("databricks-uc")
 client = MlflowClient()
 model_name = f"{catalog}.{db}.advanced-chatbot-model"
 serving_endpoint_name = f"advanced-{catalog}-{db}"[:63]
 latest_model = client.get_model_version_by_alias(model_name, "prod")
 latest_model_version = latest_model.version
 
-#TODO: use the sdk once model serving is available.
+# TODO: use the sdk once model serving is available.
 w = WorkspaceClient()
 serving_client = w.serving_endpoints
 # serving_client = EndpointApiClient()
@@ -79,9 +89,9 @@ serving_client = w.serving_endpoints
 auto_capture_config = {
     "catalog_name": catalog,
     "schema_name": db,
-    "table_name_prefix": serving_endpoint_name
-    }
-environment_vars={"DATABRICKS_TOKEN": "{{secrets/dbdemos/rag_sp_token}}"}
+    "table_name_prefix": serving_endpoint_name,
+}
+environment_vars = {"DATABRICKS_TOKEN": "{{secrets/dbdemos/rag_sp_token}}"}
 endpoint_config = EndpointCoreConfigInput(
     name=serving_endpoint_name,
     served_models=[
@@ -92,9 +102,9 @@ endpoint_config = EndpointCoreConfigInput(
             scale_to_zero_enabled=True,
             environment_vars={
                 "DATABRICKS_TOKEN": "{{secrets/dbdemos/rag_sp_token}}",  # <scope>/<secret> that contains an access token
-            }
+            },
         )
-    ]
+    ],
 )
 
 existing_endpoint = next(
@@ -102,37 +112,53 @@ existing_endpoint = next(
 )
 serving_endpoint_url = f"{host}/ml/endpoints/{serving_endpoint_name}"
 if existing_endpoint == None:
-    print(f"Creating the endpoint {serving_endpoint_url}, this will take a few minutes to package and deploy the endpoint...")
-    w.serving_endpoints.create_and_wait(name=serving_endpoint_name,
-                                        config=endpoint_config,
-                                        timeout=timedelta(minutes=30))
+    print(
+        f"Creating the endpoint {serving_endpoint_url}, this will take a few minutes to package and deploy the endpoint..."
+    )
+    w.serving_endpoints.create_and_wait(
+        name=serving_endpoint_name,
+        config=endpoint_config,
+        timeout=timedelta(minutes=30),
+    )
 else:
-    served_models = [m for m in existing_endpoint.config.served_models if m.model_name == model_name and m.model_version != latest_model_version]
+    served_models = [
+        m
+        for m in existing_endpoint.config.served_models
+        if m.model_name == model_name and m.model_version != latest_model_version
+    ]
     if len(served_models) > 0:
-        print(f"Updating the endpoint {serving_endpoint_url} to version {latest_model_version}, this will take a few minutes to package and deploy the endpoint...")
-        w.serving_endpoints.update_config_and_wait(served_models=endpoint_config.served_models,
-                                                name=serving_endpoint_name,
-                                                timeout=timedelta(minutes=30))
+        print(
+            f"Updating the endpoint {serving_endpoint_url} to version {latest_model_version}, this will take a few minutes to package and deploy the endpoint..."
+        )
+        w.serving_endpoints.update_config_and_wait(
+            served_models=endpoint_config.served_models,
+            name=serving_endpoint_name,
+            timeout=timedelta(minutes=30),
+        )
 
 # COMMAND ----------
 
-displayHTML(f'Your Model Endpoint Serving is now available. Open the <a href="/ml/endpoints/{serving_endpoint_name}">Model Serving Endpoint page</a> for more details.')
+displayHTML(
+    f'Your Model Endpoint Serving is now available. Open the <a href="/ml/endpoints/{serving_endpoint_name}">Model Serving Endpoint page</a> for more details.'
+)
 
 # COMMAND ----------
 
 # DBTITLE 1,Let's try to send a query to our chatbot
 response = serving_client.query(
     name=serving_endpoint_name,
-    inputs=[{
-        "messages": [
-            {"role": "user", "content": "What is Company A"},
-            {
-                "role": "assistant",
-                "content": "Company A is a company that provides applications for software developers.",
-            },
-            {"role": "user", "content": "Does it support creating projects?"},
-        ]
-    }]
+    inputs=[
+        {
+            "messages": [
+                {"role": "user", "content": "What is Company A"},
+                {
+                    "role": "assistant",
+                    "content": "Company A is a company that provides applications for software developers.",
+                },
+                {"role": "user", "content": "Does it support creating projects?"},
+            ]
+        }
+    ],
 )
 print(response.predictions[0])
 
@@ -181,8 +207,8 @@ print(response.predictions[0])
 
 # COMMAND ----------
 
-# monitor = dbutils.notebook.run("./05-Inference-Tables-Analysis-Notebook-with-LLM-Metrics", 600, 
-#                             {"endpoint": serving_endpoint_name, 
+# monitor = dbutils.notebook.run("./05-Inference-Tables-Analysis-Notebook-with-LLM-Metrics", 600,
+#                             {"endpoint": serving_endpoint_name,
 #                               "checkpoint_location": f'dbfs:/Volumes/{catalog}/{db}/volume_databricks_documentation/checkpoints/payload_metrics'})
 
 # COMMAND ----------

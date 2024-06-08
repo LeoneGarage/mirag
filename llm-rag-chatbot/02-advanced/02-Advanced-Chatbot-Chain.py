@@ -1,10 +1,20 @@
 # Databricks notebook source
 dbutils.widgets.text("vs_endpoint_name", "", "Vector Search Endpoint Name")
 dbutils.widgets.text("sitemap_urls", "", "URLs separated by comma of sitemap.xml")
-dbutils.widgets.text("accepted_domains", "", "Domain part of urls to process, separated by comma")
-dbutils.widgets.text("catalog", "", "Catalog name where data and vector search are stored")
-dbutils.widgets.text("schema_name", "", "Schema name where data and vector search are stored")
-dbutils.widgets.text("model_prompt", "You are a trustful assistant for SafetyCulture Application users, customers, as well as SafetyCulture company. You are answering questions about SafetyCulture, SafetyCulture concepts, SafetyCulture people, SafetyCulture Inspections, SafetyCulture company, SafetyCulture Application, or other SafetyCulture topics and other information related to SafetyCulture. If SafetyCulture word appears by itself, assume the question is about the company. If SafetyCulture word is not in the question, assume the question is about SafetyCulture company and SafetyCulture related topics", "Prompt for LLM Model")
+dbutils.widgets.text(
+    "accepted_domains", "", "Domain part of urls to process, separated by comma"
+)
+dbutils.widgets.text(
+    "catalog", "", "Catalog name where data and vector search are stored"
+)
+dbutils.widgets.text(
+    "schema_name", "", "Schema name where data and vector search are stored"
+)
+dbutils.widgets.text(
+    "model_prompt",
+    "You are a trustful assistant for Company A Application users, customers, as well as Company A company. You are answering questions about Company A, Company A concepts, Company A people, Company A Inspections, Company A company, Company A Application, or other Company A topics and other information related to Company A. If Company A word appears by itself, assume the question is about the company. If Company A word is not in the question, assume the question is about Company A company and Company A related topics",
+    "Prompt for LLM Model",
+)
 
 # COMMAND ----------
 
@@ -63,18 +73,17 @@ from langchain_community.chat_models import ChatDatabricks
 from langchain.schema.output_parser import StrOutputParser
 
 prompt = PromptTemplate(
-  input_variables = ["question"],
-  template = "You are an assistant. Give a detailed answer to this question: {question}"
+    input_variables=["question"],
+    template="You are an assistant. Give a detailed answer to this question: {question}",
 )
-chat_model = ChatDatabricks(endpoint="databricks-dbrx-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
+chat_model = ChatDatabricks(
+    endpoint="databricks-dbrx-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
 
-chain = (
-  prompt
-  | chat_model
-  | StrOutputParser()
-)
+chain = prompt | chat_model | StrOutputParser()
 print(chain.invoke({"question": "What is apps does it provide?"}))
 
 # COMMAND ----------
@@ -93,8 +102,7 @@ Now, please answer this question: {{question}}
 """
 
 prompt_with_history = PromptTemplate(
-  input_variables = ["chat_history", "question"],
-  template = prompt_with_history_str
+    input_variables=["chat_history", "question"], template=prompt_with_history_str
 )
 
 # COMMAND ----------
@@ -117,13 +125,15 @@ prompt_with_history = PromptTemplate(
 from langchain.schema.runnable import RunnableLambda
 from operator import itemgetter
 
-#The question is the last entry of the history
+# The question is the last entry of the history
 def extract_question(input):
     return input[-1]["content"]
 
-#The history is everything before the last question
+
+# The history is everything before the last question
 def extract_history(input):
     return input[:-1]
+
 
 chain_with_history = (
     {
@@ -135,13 +145,23 @@ chain_with_history = (
     | StrOutputParser()
 )
 
-print(chain_with_history.invoke({
-    "messages": [
-        {"role": "user", "content": "What is Company A?"}, 
-        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and site inspections"}, 
-        {"role": "user", "content": "Does it support creating custom templates?"}
-    ]
-}))
+print(
+    chain_with_history.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": "What is Company A?"},
+                {
+                    "role": "assistant",
+                    "content": "Company A is a company that provides tooling and applications for workplace safety and site inspections",
+                },
+                {
+                    "role": "user",
+                    "content": "Does it support creating custom templates?",
+                },
+            ]
+        }
+    )
+)
 
 # COMMAND ----------
 
@@ -155,9 +175,12 @@ print(chain_with_history.invoke({
 # COMMAND ----------
 
 # DBTITLE 1,Databricks Inquiry Classifier
-chat_model = ChatDatabricks(endpoint="databricks-dbrx-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
+chat_model = ChatDatabricks(
+    endpoint="databricks-dbrx-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
 
 is_question_about_topic_str = """
 You are classifying documents to know if this question is related with Company A Application users and customers, as well as Company A company, Company A concepts, Company A employees, Company A people, Company A Inspections, Company A company, Company A Application, other Company A topics and other information related with Company A, or something from a very different field. Also answer no if the last part is inappropriate. If Company A word appears by itself, assume the question is about the company. Do not add explanation to the answer. Also answer questions if they are in relation to altering responses with different style or humor or rhyming.
@@ -188,8 +211,7 @@ Knowing this followup history: {chat_history}, classify this question: {question
 """
 
 is_question_about_topic_prompt = PromptTemplate(
-  input_variables= ["chat_history", "question"],
-  template = is_question_about_topic_str
+    input_variables=["chat_history", "question"], template=is_question_about_topic_str
 )
 
 is_about_topic_chain = (
@@ -202,39 +224,52 @@ is_about_topic_chain = (
     | StrOutputParser()
 )
 
-#Returns "Yes" as this is about Databricks: 
-print(is_about_topic_chain.invoke({
-    "messages": [
-        {"role": "user", "content": "What is Company A?"}, 
-        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections"}, 
-        {"role": "user", "content": "Does it support creating custom templates?"}
-    ]
-}))
+# Returns "Yes" as this is about Databricks:
+print(
+    is_about_topic_chain.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": "What is Company A?"},
+                {
+                    "role": "assistant",
+                    "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections",
+                },
+                {
+                    "role": "user",
+                    "content": "Does it support creating custom templates?",
+                },
+            ]
+        }
+    )
+)
 
 # COMMAND ----------
 
 # print(is_about_topic_chain.invoke({
 #     "messages": [
-#         {"role": "user", "content": "What is Company A?"}, 
-#         {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections"}, 
+#         {"role": "user", "content": "What is Company A?"},
+#         {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections"},
 #         {"role": "user", "content": "who is the coo"}
 #     ]
 # }))
 
 # COMMAND ----------
 
-#Return "no" as this isn't about Databricks
-print(is_about_topic_chain.invoke({
-    "messages": [
-        {"role": "user", "content": "What is the meaning of life?"}
-    ]
-}))
+# Return "no" as this isn't about Databricks
+print(
+    is_about_topic_chain.invoke(
+        {"messages": [{"role": "user", "content": "What is the meaning of life?"}]}
+    )
+)
 
 # COMMAND ----------
 
-chat_model = ChatDatabricks(endpoint="databricks-dbrx-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
+chat_model = ChatDatabricks(
+    endpoint="databricks-dbrx-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
 
 is_question_about_model_str = """
 You are classifying commands to determine if the user wants to use a different LLM model. Respond with Databricks model endpoint name when the user requests a particular model.
@@ -261,25 +296,22 @@ Classify this question: {command}
 """
 
 is_question_about_model_prompt = PromptTemplate(
-  input_variables= ["command"],
-  template = is_question_about_model_str
+    input_variables=["command"], template=is_question_about_model_str
 )
 
 is_about_model_chain = (
-    {
-        "command": itemgetter("messages") | RunnableLambda(extract_question)
-    }
+    {"command": itemgetter("messages") | RunnableLambda(extract_question)}
     | is_question_about_model_prompt
     | chat_model
     | StrOutputParser()
 )
 
-#Returns Model Endpoint as this is about Databricks: 
-print(is_about_model_chain.invoke({
-    "messages": [
-        {"role": "user", "content": "Use llama3"}
-    ]
-}))
+# Returns Model Endpoint as this is about Databricks:
+print(
+    is_about_model_chain.invoke(
+        {"messages": [{"role": "user", "content": "Use llama3"}]}
+    )
+)
 
 # COMMAND ----------
 
@@ -299,11 +331,18 @@ print(is_about_model_chain.invoke({
 
 # COMMAND ----------
 
-index_name=f"{catalog}.{db}.documentation_vs_index"
+index_name = f"{catalog}.{db}.documentation_vs_index"
 host = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
 
-#Let's make sure the secret is properly setup and can access our vector search index. Check the quick-start demo for more guidance
-test_demo_permissions(host, secret_scope="dbdemos", secret_key="rag_sp_token", vs_endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME, index_name=index_name, embedding_endpoint_name="databricks-bge-large-en")
+# Let's make sure the secret is properly setup and can access our vector search index. Check the quick-start demo for more guidance
+test_demo_permissions(
+    host,
+    secret_scope="dbdemos",
+    secret_key="rag_sp_token",
+    vs_endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME,
+    index_name=index_name,
+    embedding_endpoint_name="databricks-bge-large-en",
+)
 
 # COMMAND ----------
 
@@ -312,33 +351,38 @@ from langchain_community.vectorstores import DatabricksVectorSearch
 from langchain_community.embeddings import DatabricksEmbeddings
 from langchain.chains import RetrievalQA
 
-os.environ['DATABRICKS_TOKEN'] = dbutils.secrets.get("dbdemos", "rag_sp_token")
+os.environ["DATABRICKS_TOKEN"] = dbutils.secrets.get("dbdemos", "rag_sp_token")
 
 embedding_model = DatabricksEmbeddings(endpoint="databricks-bge-large-en")
 
+
 def get_retriever(persist_dir: str = None):
     os.environ["DATABRICKS_HOST"] = host
-    #Get the vector search index
-    vsc = VectorSearchClient(workspace_url=host, personal_access_token=os.environ["DATABRICKS_TOKEN"])
+    # Get the vector search index
+    vsc = VectorSearchClient(
+        workspace_url=host, personal_access_token=os.environ["DATABRICKS_TOKEN"]
+    )
     vs_index = vsc.get_index(
-        endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME,
-        index_name=index_name
+        endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME, index_name=index_name
     )
 
     # Create the retriever
     vectorstore = DatabricksVectorSearch(
         vs_index, text_column="content", embedding=embedding_model, columns=["url"]
     )
-    return vectorstore.as_retriever(search_kwargs={'k': 4})
+    return vectorstore.as_retriever(search_kwargs={"k": 4})
+
 
 retriever = get_retriever()
 
 retrieve_document_chain = (
-    itemgetter("messages") 
-    | RunnableLambda(extract_question)
-    | retriever
+    itemgetter("messages") | RunnableLambda(extract_question) | retriever
 )
-print(retrieve_document_chain.invoke({"messages": [{"role": "user", "content": "What is Company A?"}]}))
+print(
+    retrieve_document_chain.invoke(
+        {"messages": [{"role": "user", "content": "What is Company A?"}]}
+    )
+)
 
 # COMMAND ----------
 
@@ -363,37 +407,40 @@ Question: {question}
 """
 
 generate_query_to_retrieve_context_prompt = PromptTemplate(
-  input_variables= ["chat_history", "question"],
-  template = generate_query_to_retrieve_context_template
+    input_variables=["chat_history", "question"],
+    template=generate_query_to_retrieve_context_template,
 )
 
-generate_query_to_retrieve_context_chain = (
-    {
-        "question": itemgetter("messages") | RunnableLambda(extract_question),
-        "chat_history": itemgetter("messages") | RunnableLambda(extract_history),
-    }
-    | RunnableBranch(  #Augment query only when there is a chat history
-      (lambda x: x["chat_history"], generate_query_to_retrieve_context_prompt | chat_model | StrOutputParser()),
-      (lambda x: not x["chat_history"], RunnableLambda(lambda x: x["question"])),
-      RunnableLambda(lambda x: x["question"])
-    )
+generate_query_to_retrieve_context_chain = {
+    "question": itemgetter("messages") | RunnableLambda(extract_question),
+    "chat_history": itemgetter("messages") | RunnableLambda(extract_history),
+} | RunnableBranch(  # Augment query only when there is a chat history
+    (
+        lambda x: x["chat_history"],
+        generate_query_to_retrieve_context_prompt | chat_model | StrOutputParser(),
+    ),
+    (lambda x: not x["chat_history"], RunnableLambda(lambda x: x["question"])),
+    RunnableLambda(lambda x: x["question"]),
 )
 
-#Let's try it
-output = generate_query_to_retrieve_context_chain.invoke({
-    "messages": [
-        {"role": "user", "content": "What is Company A?"}
-    ]
-})
+# Let's try it
+output = generate_query_to_retrieve_context_chain.invoke(
+    {"messages": [{"role": "user", "content": "What is Company A?"}]}
+)
 print(f"Test retriever query without history: {output}")
 
-output = generate_query_to_retrieve_context_chain.invoke({
-    "messages": [
-        {"role": "user", "content": "What is Company A?"}, 
-        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
-        {"role": "user", "content": "Does it support creating custom templates?"}
-    ]
-})
+output = generate_query_to_retrieve_context_chain.invoke(
+    {
+        "messages": [
+            {"role": "user", "content": "What is Company A?"},
+            {
+                "role": "assistant",
+                "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections.",
+            },
+            {"role": "user", "content": "Does it support creating custom templates?"},
+        ]
+    }
+)
 print(f"Test retriever question, summarized with history: {output}")
 
 # COMMAND ----------
@@ -414,7 +461,11 @@ print(f"Test retriever question, summarized with history: {output}")
 
 # COMMAND ----------
 
-from langchain.schema.runnable import RunnableBranch, RunnableParallel, RunnablePassthrough
+from langchain.schema.runnable import (
+    RunnableBranch,
+    RunnableParallel,
+    RunnablePassthrough,
+)
 
 question_with_history_and_context_str = f"""
 {model_prompt}. If you do not know the answer to a question, you truthfully say you do not know. Read the discussion to get the context of the previous conversation. In the chat discussion, you are referred to as "assistant". The user is referred to as "user".
@@ -429,60 +480,81 @@ Based on this history and context, answer this question: {{question}}
 """
 
 question_with_history_and_context_prompt = PromptTemplate(
-  input_variables= ["chat_history", "context", "question"],
-  template = question_with_history_and_context_str
+    input_variables=["chat_history", "context", "question"],
+    template=question_with_history_and_context_str,
 )
 
-dbrx_model = ChatDatabricks(endpoint="databricks-dbrx-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
-llama_model = ChatDatabricks(endpoint="databricks-meta-llama-3-70b-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
-mixtral_model = ChatDatabricks(endpoint="databricks-mixtral-8x7b-instruct", max_tokens = 500, temperature = 0.8, extra_params = {
-    "top_p": 0.95
-  })
+dbrx_model = ChatDatabricks(
+    endpoint="databricks-dbrx-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
+llama_model = ChatDatabricks(
+    endpoint="databricks-meta-llama-3-70b-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
+mixtral_model = ChatDatabricks(
+    endpoint="databricks-mixtral-8x7b-instruct",
+    max_tokens=500,
+    temperature=0.8,
+    extra_params={"top_p": 0.95},
+)
+
 
 def format_context(docs):
     return "\n\n".join([d.page_content for d in docs])
 
+
 def extract_source_urls(docs):
     return [d.metadata["url"] for d in docs]
 
+
 branch_node_model = RunnableBranch(
-  (lambda x: "databricks-mixtral-8x7b-instruct" in x["model"].lower(), (itemgetter("prompt") | mixtral_model)),
-  (lambda x: "databricks-meta-llama-3-70b-instruct" in x["model"].lower(), (itemgetter("prompt") | llama_model)),
-  (itemgetter("prompt") | dbrx_model)
+    (
+        lambda x: "databricks-mixtral-8x7b-instruct" in x["model"].lower(),
+        (itemgetter("prompt") | mixtral_model),
+    ),
+    (
+        lambda x: "databricks-meta-llama-3-70b-instruct" in x["model"].lower(),
+        (itemgetter("prompt") | llama_model),
+    ),
+    (itemgetter("prompt") | dbrx_model),
 )
 
 relevant_question_chain = (
-  RunnablePassthrough() |
-  {
-    "relevant_docs": generate_query_to_retrieve_context_prompt | chat_model | StrOutputParser() | retriever,
-    "chat_history": itemgetter("chat_history"), 
-    "question": itemgetter("question")
-  }
-  |
-  {
-    "context": itemgetter("relevant_docs") | RunnableLambda(format_context),
-    "sources": itemgetter("relevant_docs") | RunnableLambda(extract_source_urls),
-    "chat_history": itemgetter("chat_history"), 
-    "question": itemgetter("question")
-  }
-  |
-  {
-    "prompt": question_with_history_and_context_prompt,
-    "sources": itemgetter("sources")
-  }
-  |
-  {
-    "result": itemgetter("prompt") | dbrx_model | StrOutputParser(),
-    "sources": itemgetter("sources")
-  }
+    RunnablePassthrough()
+    | {
+        "relevant_docs": generate_query_to_retrieve_context_prompt
+        | chat_model
+        | StrOutputParser()
+        | retriever,
+        "chat_history": itemgetter("chat_history"),
+        "question": itemgetter("question"),
+    }
+    | {
+        "context": itemgetter("relevant_docs") | RunnableLambda(format_context),
+        "sources": itemgetter("relevant_docs") | RunnableLambda(extract_source_urls),
+        "chat_history": itemgetter("chat_history"),
+        "question": itemgetter("question"),
+    }
+    | {
+        "prompt": question_with_history_and_context_prompt,
+        "sources": itemgetter("sources"),
+    }
+    | {
+        "result": itemgetter("prompt") | dbrx_model | StrOutputParser(),
+        "sources": itemgetter("sources"),
+    }
 )
 
-irrelevant_question_chain = (
-  RunnableLambda(lambda x: {"result": 'I cannot answer questions that are not about Company A.', "sources": []})
+irrelevant_question_chain = RunnableLambda(
+    lambda x: {
+        "result": "I cannot answer questions that are not about Company A.",
+        "sources": [],
+    }
 )
 
 # branch_node = RunnableBranch(
@@ -493,15 +565,12 @@ irrelevant_question_chain = (
 
 branch_node = relevant_question_chain
 
-full_chain = (
-  {
+full_chain = {
     "question_is_relevant": is_about_topic_chain,
     "model": is_about_model_chain,
     "question": itemgetter("messages") | RunnableLambda(extract_question),
-    "chat_history": itemgetter("messages") | RunnableLambda(extract_history)
-  }
-  | branch_node
-)
+    "chat_history": itemgetter("messages") | RunnableLambda(extract_history),
+} | branch_node
 
 # COMMAND ----------
 
@@ -512,14 +581,18 @@ full_chain = (
 
 # DBTITLE 1,Asking an out-of-scope question
 import json
+
 non_relevant_dialog = {
     "messages": [
-        {"role": "user", "content": "What is Company A?"}, 
-        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
-        {"role": "user", "content": "Why is the sky blue?"}
+        {"role": "user", "content": "What is Company A?"},
+        {
+            "role": "assistant",
+            "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections.",
+        },
+        {"role": "user", "content": "Why is the sky blue?"},
     ]
 }
-print(f'Testing with a non relevant question...')
+print(f"Testing with a non relevant question...")
 response = full_chain.invoke(non_relevant_dialog)
 display_chat(non_relevant_dialog["messages"], response)
 
@@ -528,12 +601,15 @@ display_chat(non_relevant_dialog["messages"], response)
 # DBTITLE 1,Asking a relevant question
 dialog = {
     "messages": [
-        {"role": "user", "content": "What is Company A?"}, 
-        {"role": "assistant", "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections."}, 
-        {"role": "user", "content": "Does it support creating custom templates?"}
+        {"role": "user", "content": "What is Company A?"},
+        {
+            "role": "assistant",
+            "content": "Company A is a company that provides tooling and applications for workplace safety and sire inspections.",
+        },
+        {"role": "user", "content": "Does it support creating custom templates?"},
     ]
 }
-print(f'Testing with relevant history and question...')
+print(f"Testing with relevant history and question...")
 response = full_chain.invoke(dialog)
 display_chat(dialog["messages"], response)
 
@@ -552,7 +628,7 @@ mlflow.set_registry_uri("databricks-uc")
 model_name = f"{catalog}.{db}.advanced-chatbot-model"
 
 with mlflow.start_run(run_name="chatbot_rag") as run:
-    #Get our model signature from input/output
+    # Get our model signature from input/output
     output = full_chain.invoke(dialog)
     signature = infer_signature(dialog, output)
 
@@ -566,7 +642,7 @@ with mlflow.start_run(run_name="chatbot_rag") as run:
             "langchain==" + langchain.__version__,
             "databricks-vectorsearch",
             "pydantic==2.5.2 --no-binary pydantic",
-            "cloudpickle=="+ cloudpickle.__version__
+            "cloudpickle==" + cloudpickle.__version__,
         ],
         input_example=dialog,
         signature=signature,
@@ -577,7 +653,9 @@ with mlflow.start_run(run_name="chatbot_rag") as run:
 
 client = MlflowClient()
 model_version_infos = client.search_model_versions(f"name = '{model_name}'")
-new_model_version = max([int(model_version_info.version) for model_version_info in model_version_infos])
+new_model_version = max(
+    [int(model_version_info.version) for model_version_info in model_version_infos]
+)
 client.set_registered_model_alias(model_name, "prod", new_model_version)
 
 # COMMAND ----------
@@ -611,8 +689,8 @@ model.invoke(dialog)
 
 # dialog = {
 #     "messages": [
-#         {"role": "user", "content": "What is Company A?"}, 
-#         {"role": "assistant", "content": "Company A is a digital workplace software designed to help IT managers, digital workplace managers, HR teams, and employee experience teams manage their teams effectively, automate manual processes, and ensure organizational compliance. It offers customizable digital forms, a central hub for communication, employee training and certification tracking, task progress monitoring, and safety audits, hazard checklists, and incident reporting features. It's available on both mobile app (iOS and Android) and web-based software. Company A is best for businesses prioritizing safety and health of their employees, applicable across all industries and useful for various sectors, regardless of size. It emphasizes user convenience by offering ready-to-use templates, real-time corrective actions, efficient recordkeeping, and insightful analytics."}, 
+#         {"role": "user", "content": "What is Company A?"},
+#         {"role": "assistant", "content": "Company A is a digital workplace software designed to help IT managers, digital workplace managers, HR teams, and employee experience teams manage their teams effectively, automate manual processes, and ensure organizational compliance. It offers customizable digital forms, a central hub for communication, employee training and certification tracking, task progress monitoring, and safety audits, hazard checklists, and incident reporting features. It's available on both mobile app (iOS and Android) and web-based software. Company A is best for businesses prioritizing safety and health of their employees, applicable across all industries and useful for various sectors, regardless of size. It emphasizes user convenience by offering ready-to-use templates, real-time corrective actions, efficient recordkeeping, and insightful analytics."},
 #         {"role": "user", "content": "make it rhyme"}
 #     ]
 # }
