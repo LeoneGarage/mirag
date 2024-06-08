@@ -275,24 +275,31 @@ def download_pages(root):
         loc.text
         for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
-    for url in urls:
-        if url.endswith(".xml") or url.endswith(".xml.gz"):
-            print(f"Downloading {url}")
-            with requests.get(
-                url,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
-                },
-                timeout=http_fetch_timeout_secs,
-            ) as response:
-                ct = response.headers.get("Content-Type", None)
-                content = response.content
-                if ct and "application/x-gzip" in ct:
-                    content = decompress(content)
-                root = ET.fromstring(content)
-            final_urls.extend(download_pages(root))
-        else:
-            final_urls.append(url)
+    adapter = HTTPAdapter(max_retries=retries)
+    try:
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+            for url in urls:
+                if url.endswith(".xml") or url.endswith(".xml.gz"):
+                    print(f"Downloading {url}")
+                    with http.get(
+                        url,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                        },
+                        timeout=http_fetch_timeout_secs,
+                    ) as response:
+                        ct = response.headers.get("Content-Type", None)
+                        content = response.content
+                        if ct and "application/x-gzip" in ct:
+                            content = decompress(content)
+                        root = ET.fromstring(content)
+                    final_urls.extend(download_pages(root))
+                else:
+                    final_urls.append(url)
+    finally:
+        adapter.close()
     return final_urls
 
 
@@ -431,7 +438,6 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
             max_retries=retries, pool_connections=200, pool_maxsize=200
         )
         try:
-
             def extract_text(http, html_content):
                 if html_content:
                     if http is not None:
@@ -542,18 +548,25 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
 def download_documentation_article(url, max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
-    with requests.get(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
-        },
-        timeout=http_fetch_timeout_secs,
-    ) as response:
-        ct = response.headers.get("Content-Type", None)
-        content = response.content
-        if ct and "application/x-gzip" in ct:
-            content = decompress(content)
-        root = ET.fromstring(content)
+    adapter = HTTPAdapter(max_retries=retries)
+    try:
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+            with http.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                },
+                timeout=http_fetch_timeout_secs,
+            ) as response:
+                ct = response.headers.get("Content-Type", None)
+                content = response.content
+                if ct and "application/x-gzip" in ct:
+                    content = decompress(content)
+                root = ET.fromstring(content)
+    finally:
+        adapter.close()
 
     # Find all 'loc' elements (URLs) in the XML
     urls = download_pages(root)
