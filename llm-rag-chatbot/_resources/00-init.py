@@ -61,6 +61,7 @@ from pyspark.storagelevel import StorageLevel
 import uuid
 import datetime
 from datetime import timedelta
+from gzip import decompress
 
 # COMMAND ----------
 
@@ -275,10 +276,14 @@ def download_pages(root):
         for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
     for url in urls:
-        if url.endswith(".xml"):
+        if url.endswith(".xml") or url.endswith(".xml.gz"):
             print(f"Downloading {url}")
             with requests.get(url, timeout=http_fetch_timeout_secs) as response:
-                root = ET.fromstring(response.content)
+                ct = response.headers.get("Content-Type", None)
+                content = response.content
+                if ct and "application/x-gzip" in ct:
+                    content = decompress(content)
+                root = ET.fromstring(content)
             final_urls.extend(download_pages(root))
         else:
             final_urls.append(url)
@@ -379,7 +384,7 @@ def fetch_html(http, url):
         ) as response:
             if response.status_code == 200:
                 ct = response.headers.get("Content-Type", None)
-                if "text/html" in ct:
+                if ct and "text/html" in ct:
                     return response.content
     except requests.RequestException as e:
         return None
@@ -529,7 +534,11 @@ def download_documentation_article(url, max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
     with requests.get(url, timeout=http_fetch_timeout_secs) as response:
-        root = ET.fromstring(response.content)
+        ct = response.headers.get("Content-Type", None)
+        content = response.content
+        if ct and "application/x-gzip" in ct:
+            content = decompress(content)
+        root = ET.fromstring(content)
 
     # Find all 'loc' elements (URLs) in the XML
     urls = download_pages(root)

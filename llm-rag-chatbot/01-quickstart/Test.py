@@ -68,29 +68,32 @@ dbutils.widgets.text("schema_name", "", "Schema name where data and vector searc
 
 # COMMAND ----------
 
+from gzip import decompress
+
+# COMMAND ----------
+
 catalog = dbutils.widgets.get("catalog")
 
 # COMMAND ----------
 
-urls = [r.url for r in spark.read.format("delta").table(f"`{catalog}`.debug.links1").collect()]
+# urls = [r.url for r in spark.read.format("delta").table(f"`{catalog}`.debug.links1").collect()]
 
 # COMMAND ----------
 
 def fetch_html(http, url):
     try:
       print(f"Fetching {url}")
-      with http.get(url, headers={"User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36",
-      "Connection": "keep-alive",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Accept": "*/*"}, timeout=10) as response:
+      with http.get(url, headers={"User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"}, timeout=10) as response:
         print(f"Fetched {url}, status_code {response.status_code}")
         if response.status_code == 301:
           redirect_url = response.headers["Location"]
           return fetch_html(http, redirect_url)
         if response.status_code == 200:
           ct = response.headers.get("Content-Type", None)
-          if "text/html" in ct:
+          if "text/html" in ct or "text/xml" in ct:
             return response.content
+          if "application/x-gzip" in ct:
+            return decompress(response.content)
     except requests.RequestException as e:
       print(f"Exception fetching {url}, {str(e)}")
       return None
@@ -118,7 +121,8 @@ try:
         http.mount("http://", adapter)
         http.mount("https://", adapter)
         # for u in urls:
-        html = fetch_html(http, "https://www.qantas.com/travel/airlines/qantas-ceo-alan-joyce-half-year-results-speech/global/en")
+        html = fetch_html(http, "https://www.qantas.com/hotels/sitemaps/qantas/qantas.xml.gz")
+        print(html)
 finally:
     adapter.close()
 
