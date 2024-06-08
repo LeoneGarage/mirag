@@ -17,12 +17,12 @@ dbutils.widgets.text("schema_name", "", "Schema name where data and vector searc
 
 # COMMAND ----------
 
-VECTOR_SEARCH_ENDPOINT_NAME=dbutils.widgets.get("vs_endpoint_name")#"one-env-shared-endpoint-3"
+VECTOR_SEARCH_ENDPOINT_NAME=dbutils.widgets.get("vs_endpoint_name")
 
-SITEMAP_URLS = [u.strip() for u in dbutils.widgets.get("sitemap_urls").split(",")]#["https://safetyculture.com/sitemap.xml"]
-accepted_domains = [d.strip() for d in dbutils.widgets.get("accepted_domains").split(",")]#["safetyculture.com", "safetyculture.io"]
+SITEMAP_URLS = [u.strip() for u in dbutils.widgets.get("sitemap_urls").split(",")]
+accepted_domains = [d.strip() for d in dbutils.widgets.get("accepted_domains").split(",")]
 
-catalog = dbutils.widgets.get("catalog")#"safety-culture"
+catalog = dbutils.widgets.get("catalog")
 
 #email = spark.sql('select current_user() as user').collect()[0]['user']
 #username = email.split('@')[0].replace('.', '_')
