@@ -126,7 +126,6 @@ ci = gr.ChatInterface(
     chatbot=gr.Chatbot(placeholder=f'<img src="{logo_url}" style="opacity:0.5;">', show_label=False, container=False, show_copy_button=True, bubble_full_width=True),
     textbox=gr.Textbox(placeholder="Ask me a question",
                        container=False, scale=7),
-    # title="Databricks SafetyCulture LLM RAG demo - Chat with DBRX Databricks model serving endpoint about SafetyCulture",
     description="This chatbot is a demo example of LLM chatbot built on Dataricks platform. <br>This content is provided as a LLM RAG educational example, without support. It is using DBRX, has not been tested and should not be used as production content",
     examples=[example_q1,
               example_q2,
