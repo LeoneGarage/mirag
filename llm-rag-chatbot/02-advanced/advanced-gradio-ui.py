@@ -13,7 +13,12 @@ dbutils.widgets.text("example_q4", "", "Example Question 4")
 
 # COMMAND ----------
 
-# MAGIC %run ./04-Deploy-Model-as-Endpoint $catalog=$catalog $schema_name=$schema_name $sitemap_urls="" $accepted_domains="" $vs_endpoint_name=""
+# MAGIC %pip install databricks-sdk==0.27.0 gradio
+# MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %run ../config $catalog=$catalog $schema_name=$schema_name $sitemap_urls="" $accepted_domains="" $vs_endpoint_name=""
 
 # COMMAND ----------
 
@@ -41,6 +46,7 @@ import gradio as gr
 import requests
 import os
 from gradio.themes.utils import sizes
+from databricks.sdk import WorkspaceClient
 
 css = f"""
 body {{
