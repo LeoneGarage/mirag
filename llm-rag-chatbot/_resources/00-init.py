@@ -466,7 +466,7 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     df_urls = (
         spark.createDataFrame(urls_rdd, StringType())
         .toDF("url")
-        .repartition(5000, "url")
+        .repartition(5000, "url").distinct()
     )
 
     # Apply UDFs to DataFrame
@@ -578,12 +578,7 @@ def download_documentation_articles(max_documents=None):
         for u in urls
     ]
     final_df = build_url_dataframe(accepted_domains, urls)
-    window = Window.partitionBy(col("url")).orderBy(desc(col("text")))
-    return (
-        final_df.select(col("url"), col("text"), row_number().over(window).alias("rn"))
-        .where("rn = 1")
-        .select("url", "text")
-    )
+    return final_df
 
 # COMMAND ----------
 
