@@ -268,38 +268,31 @@ retries = Retry(
 )
 
 
-def download_pages(root):
+def download_pages(http, root):
     final_urls = []
     # Find all 'loc' elements (URLs) in the XML
     urls = [
         loc.text
         for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
-    adapter = HTTPAdapter(max_retries=retries)
-    try:
-        with requests.Session() as http:
-            http.mount("http://", adapter)
-            http.mount("https://", adapter)
-            for url in urls:
-                if url.endswith(".xml") or url.endswith(".xml.gz"):
-                    print(f"Downloading {url}")
-                    with http.get(
-                        url,
-                        headers={
-                            "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
-                        },
-                        timeout=http_fetch_timeout_secs,
-                    ) as response:
-                        ct = response.headers.get("Content-Type", None)
-                        content = response.content
-                        if ct and "application/x-gzip" in ct:
-                            content = decompress(content)
-                        root = ET.fromstring(content)
-                    final_urls.extend(download_pages(root))
-                else:
-                    final_urls.append(url)
-    finally:
-        adapter.close()
+    for url in urls:
+        if url.endswith(".xml") or url.endswith(".xml.gz"):
+            print(f"Downloading {url}")
+            with http.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                },
+                timeout=http_fetch_timeout_secs,
+            ) as response:
+                ct = response.headers.get("Content-Type", None)
+                content = response.content
+                if ct and "application/x-gzip" in ct:
+                    content = decompress(content)
+                root = ET.fromstring(content)
+            final_urls.extend(download_pages(http, root))
+        else:
+            final_urls.append(url)
     return final_urls
 
 
@@ -545,49 +538,46 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     return final_df
 
 
-def download_documentation_article(url, max_documents=None):
+def download_top_level_urls(url, max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
-    adapter = HTTPAdapter(max_retries=retries)
-    try:
-        with requests.Session() as http:
-            http.mount("http://", adapter)
-            http.mount("https://", adapter)
-            with http.get(
-                url,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
-                },
-                timeout=http_fetch_timeout_secs,
-            ) as response:
-                ct = response.headers.get("Content-Type", None)
-                content = response.content
-                if ct and "application/x-gzip" in ct:
-                    content = decompress(content)
-                root = ET.fromstring(content)
-    finally:
-        adapter.close()
+    if url.endswith(".xml") or url.endswith(".xml.gz"):
+        adapter = HTTPAdapter(max_retries=retries)
+        try:
+            with requests.Session() as http:
+                http.mount("http://", adapter)
+                http.mount("https://", adapter)
+                with http.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                    },
+                    timeout=http_fetch_timeout_secs,
+                ) as response:
+                    ct = response.headers.get("Content-Type", None)
+                    content = response.content
+                    if ct and "application/x-gzip" in ct:
+                        content = decompress(content)
+                    root = ET.fromstring(content)
 
-    # Find all 'loc' elements (URLs) in the XML
-    urls = download_pages(root)
+                # Find all 'loc' elements (URLs) in the XML
+                urls = download_pages(http, root)
+        finally:
+            adapter.close()
+    else:
+        urls.append(url)
     if max_documents:
         urls = urls[:max_documents]
-    return build_url_dataframe(accepted_domains, urls)
+    return urls
 
 
 def download_documentation_articles(max_documents=None):
     sc.setCheckpointDir(spark_checkpoint_location)
-    final_dfs = [
-        download_documentation_article(url, max_documents) for url in SITEMAP_URLS
+    urls = [
+        u for urls in [download_top_level_urls(url, max_documents) for url in SITEMAP_URLS] for u in urls
     ]
-    final_df = None
-    if len(final_dfs) > 0:
-        for df in final_dfs:
-            if final_df is None:
-                final_df = df
-            else:
-                final_df = final_df.unionAll(df)
-    return final_df.groupBy("url").agg(first("text").alias("text"))
+    final_df = build_url_dataframe(accepted_domains, urls)
+    return final_df
 
 # COMMAND ----------
 
