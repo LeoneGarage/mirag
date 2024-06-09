@@ -3,18 +3,18 @@ import requests
 
 # COMMAND ----------
 
-company_name = "Deputy"
-accepted_domains = "www.deputy.com"
-catalog = "deputy"
-schema_name = "chatbot"
-sitemap_urls = "https://www.deputy.com/sitemap_index.xml"
-vs_endpoint_name = "vs_endpoint"
+company_name = "<Company Name>" #Company name for which rag data and model is being generated
+accepted_domains = "<www.company-domain.com>" # Comma separated list
+catalog = "<catalog name>" # Catalog name where rag data and model will live
+schema_name = "chatbot" # Schema name in catalog where rag data and model will live
+sitemap_urls = "<https://www.company-domain.com/sitemap.xml>" # Comma separated list
+vs_endpoint_name = "<Vector Search Index Endpoint name>" # e.g. vs_index
 model_prompt = f"You are a trustful assistant for {company_name} customers, as well as {company_name} company. You are answering questions about {company_name}, {company_name} concepts, {company_name} people, {company_name} company, {company_name} Applications, or other {company_name} topics and other information related to {company_name}. If {company_name} word appears by itself, assume the question is about the company. If {company_name} word is not in the question, assume the question is about {company_name} company and {company_name} related topics"
 
 # COMMAND ----------
 
 logo_url = ""
-example_q1 = "What is Deputy?"
+example_q1 = "What is <Company Name>?"
 example_q2 = ""
 example_q3 = ""
 example_q4 = ""
