@@ -51,7 +51,10 @@ from pyspark.sql.functions import (
     explode_outer,
     udf,
     first,
+    desc,
+    row_number,
 )
+from pyspark.sql import Window
 import os
 import mlflow
 from typing import Iterator
@@ -397,6 +400,65 @@ def fetch_html(http, url):
     return None
 
 
+# Pandas UDF to fetch HTML content for a batch of URLs
+@pandas_udf("string")
+def fetch_html_udf(urls: pd.Series) -> pd.Series:
+    adapter = HTTPAdapter(max_retries=retries, pool_connections=200, pool_maxsize=200)
+    try:
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+            with ThreadPoolExecutor(max_workers=200) as executor:
+                results = list(executor.map(lambda u: fetch_html(http, u), urls))
+                return pd.Series(results)
+            # return urls.apply(lambda u: fetch_html(http, u))
+    finally:
+        adapter.close()
+
+
+def extract_text(http, html_content):
+    if html_content:
+        if http is not None:
+            html_content = fetch_html(http, html_content)
+        if html_content:
+            soup = BeautifulSoup(html_content, "html.parser")
+            meta = soup.find("meta", itemprop="datePublished")
+            if meta:
+                date_str = meta.get("content", None)
+                if date_str:
+                    try:
+                        datePublished = datetime.date.fromisoformat(date_str)
+                    except ValueError as e:
+                        datePublished = None
+                    # Ignore pages older than 1 year
+                    if datePublished is not None and datePublished < (
+                        datetime.date.today() - timedelta(days=365)
+                    ):
+                        return None
+            article_divs = soup.find_all(
+                "body"
+            )  # soup.find("div", itemprop="articleBody")
+            return "".join([str(article_div).strip() for article_div in article_divs])
+    return None
+
+
+# Pandas UDF to process HTML content and extract text
+@pandas_udf("string")
+def download_web_page_udf(html_contents: pd.Series) -> pd.Series:
+    adapter = HTTPAdapter(max_retries=retries, pool_connections=200, pool_maxsize=200)
+    try:
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+            with ThreadPoolExecutor(max_workers=200) as executor:
+                results = list(
+                    executor.map(lambda h: extract_text(http, h), html_contents)
+                )
+                return pd.Series(results)
+    finally:
+        adapter.close()
+
+
 def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     num_iterations_to_checkpoint = max(1, num_iterations_to_checkpoint)
     # Create DataFrame from URLs
@@ -406,71 +468,6 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
         .toDF("url")
         .repartition(5000, "url")
     )
-
-    # Pandas UDF to fetch HTML content for a batch of URLs
-    @pandas_udf("string")
-    def fetch_html_udf(urls: pd.Series) -> pd.Series:
-        adapter = HTTPAdapter(
-            max_retries=retries, pool_connections=200, pool_maxsize=200
-        )
-        try:
-            with requests.Session() as http:
-                http.mount("http://", adapter)
-                http.mount("https://", adapter)
-                with ThreadPoolExecutor(max_workers=200) as executor:
-                    results = list(executor.map(lambda u: fetch_html(http, u), urls))
-                    return pd.Series(results)
-                # return urls.apply(lambda u: fetch_html(http, u))
-        finally:
-            adapter.close()
-
-    # Pandas UDF to process HTML content and extract text
-    @pandas_udf("string")
-    def download_web_page_udf(html_contents: pd.Series) -> pd.Series:
-        adapter = HTTPAdapter(
-            max_retries=retries, pool_connections=200, pool_maxsize=200
-        )
-        try:
-            def extract_text(http, html_content):
-                if html_content:
-                    if http is not None:
-                        html_content = fetch_html(http, html_content)
-                    if html_content:
-                        soup = BeautifulSoup(html_content, "html.parser")
-                        meta = soup.find("meta", itemprop="datePublished")
-                        if meta:
-                            date_str = meta.get("content", None)
-                            if date_str:
-                                try:
-                                    datePublished = datetime.date.fromisoformat(
-                                        date_str
-                                    )
-                                except ValueError as e:
-                                    datePublished = None
-                                # Ignore pages older than 1 year
-                                if datePublished is not None and datePublished < (
-                                    datetime.date.today() - timedelta(days=365)
-                                ):
-                                    return None
-                        article_divs = soup.find_all(
-                            "body"
-                        )  # soup.find("div", itemprop="articleBody")
-                        return "".join(
-                            [str(article_div).strip() for article_div in article_divs]
-                        )
-                return None
-
-            with requests.Session() as http:
-                http.mount("http://", adapter)
-                http.mount("https://", adapter)
-                with ThreadPoolExecutor(max_workers=200) as executor:
-                    results = list(
-                        executor.map(lambda h: extract_text(http, h), html_contents)
-                    )
-                    return pd.Series(results)
-            # return html_contents.apply(lambda h: extract_text(None, h))
-        finally:
-            adapter.close()
 
     # Apply UDFs to DataFrame
     df_with_html = df_urls.withColumn(
@@ -574,10 +571,19 @@ def download_top_level_urls(url, max_documents=None):
 def download_documentation_articles(max_documents=None):
     sc.setCheckpointDir(spark_checkpoint_location)
     urls = [
-        u for urls in [download_top_level_urls(url, max_documents) for url in SITEMAP_URLS] for u in urls
+        u
+        for urls in [
+            download_top_level_urls(url, max_documents) for url in SITEMAP_URLS
+        ]
+        for u in urls
     ]
     final_df = build_url_dataframe(accepted_domains, urls)
-    return final_df
+    window = Window.partitionBy(col("url")).orderBy(desc(col("text")))
+    return (
+        final_df.select(col("url"), col("text"), row_number().over(window).alias("rn"))
+        .where("rn = 1")
+        .select("url", "text")
+    )
 
 # COMMAND ----------
 
