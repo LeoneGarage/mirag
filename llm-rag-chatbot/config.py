@@ -28,6 +28,7 @@ catalog = dbutils.widgets.get("catalog")
 #username = email.split('@')[0].replace('.', '_')
 #dbName = db = f"rag_chatbot_{username}"
 dbName = db = dbutils.widgets.get("schema_name")#"chatbot"
+serving_endpoint_name = f"advanced-{catalog}-{db}"[:63]
 
 # COMMAND ----------
 

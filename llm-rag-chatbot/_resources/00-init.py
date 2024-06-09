@@ -843,7 +843,3 @@ def table_exists(table_name):
     except:
         return False
     return True
-
-# COMMAND ----------
-
-serving_endpoint_name = f"safety-culture-{catalog}-{db}"[:63]

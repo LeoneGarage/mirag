@@ -77,7 +77,6 @@ from datetime import timedelta
 mlflow.set_registry_uri("databricks-uc")
 client = MlflowClient()
 model_name = f"{catalog}.{db}.advanced-chatbot-model"
-serving_endpoint_name = f"advanced-{catalog}-{db}"[:63]
 latest_model = client.get_model_version_by_alias(model_name, "prod")
 latest_model_version = latest_model.version
 
