@@ -47,7 +47,7 @@ dbutils.widgets.text(
 # COMMAND ----------
 
 # MAGIC %pip install mlflow==2.12.1 lxml==4.9.3 langchain==0.1.17 databricks-vectorsearch==0.22 cloudpickle==2.2.1 databricks-sdk==0.27.0 cloudpickle==2.2.1 pydantic==2.5.2
-# MAGIC %pip install pip mlflow[databricks]==2.12.1 gradio
+# MAGIC %pip install pip mlflow[databricks]==2.12.1
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------

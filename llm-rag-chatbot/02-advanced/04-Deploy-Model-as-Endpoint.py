@@ -37,7 +37,7 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
-# MAGIC %pip install databricks-sdk==0.27.0 mlflow==2.12.1 gradio
+# MAGIC %pip install databricks-sdk==0.27.0 mlflow==2.12.1
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
