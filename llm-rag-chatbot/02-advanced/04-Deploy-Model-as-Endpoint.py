@@ -82,8 +82,6 @@ latest_model_version = latest_model.version
 
 # TODO: use the sdk once model serving is available.
 w = WorkspaceClient()
-serving_client = w.serving_endpoints
-# serving_client = EndpointApiClient()
 # Start the endpoint using the REST API (you can do it using the UI directly)
 auto_capture_config = {
     "catalog_name": catalog,
@@ -144,7 +142,7 @@ displayHTML(
 # COMMAND ----------
 
 # DBTITLE 1,Let's try to send a query to our chatbot
-response = serving_client.query(
+response = w.serving_endpoints.query(
     name=serving_endpoint_name,
     inputs=[
         {
