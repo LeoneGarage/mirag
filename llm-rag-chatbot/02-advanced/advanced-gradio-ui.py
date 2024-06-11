@@ -190,7 +190,7 @@ dbutils.fs.put(f"dbfs:/empty/{catalog}/files/dummy.csv", "nothing,nothing", True
 
 # COMMAND ----------
 
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.empty")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{catalog}`.empty")
 
 # COMMAND ----------
 
