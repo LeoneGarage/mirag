@@ -4,7 +4,7 @@ import requests
 # COMMAND ----------
 
 company_name = "<Company Name>" #Company name for which rag data and model is being generated
-accepted_domains = "<www.company-domain.com>" # Comma separated list
+accepted_domains = "<www.company-domain.com>" # Comma separated list of accepted domains to scrape, all other will be ignored, e.g. www.databricks.com for Databricks
 catalog = "<catalog name>" # Catalog name where rag data and model will live
 schema_name = "chatbot" # Schema name in catalog where rag data and model will live
 sitemap_urls = "<https://www.company-domain.com/sitemap.xml>" # Comma separated list
@@ -18,7 +18,6 @@ example_q1 = "What is <Company Name>?"
 example_q2 = ""
 example_q3 = ""
 example_q4 = ""
-example_q5 = ""
 
 # COMMAND ----------
 
