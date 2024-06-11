@@ -284,7 +284,7 @@ def download_pages(http, root):
             with http.get(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
                 },
                 timeout=http_fetch_timeout_secs,
             ) as response:
@@ -387,7 +387,7 @@ def fetch_html(http, url):
         with http.get(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
             },
             timeout=http_fetch_timeout_secs,
         ) as response:
@@ -547,7 +547,7 @@ def download_top_level_urls(url, max_documents=None):
                 with http.get(
                     url,
                     headers={
-                        "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
                     },
                     timeout=http_fetch_timeout_secs,
                 ) as response:
