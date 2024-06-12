@@ -299,7 +299,7 @@ def download_pages(http, root):
     return final_urls
 
 
-def extract_links(http, url, html_content):
+def extract_links(http, url, url_prefix, html_content):
     def prepend_url(url, link):
         if not link.startswith("https://") and not link.startswith("http://"):
             if url.endswith("/"):
@@ -311,7 +311,7 @@ def extract_links(http, url, html_content):
 
     if html_content:
         if http is not None:
-            html_content = fetch_html(http, html_content)
+            html_content = fetch_html(http, f"{url_prefix}{html_content}")
         if html_content:
             soup = BeautifulSoup(html_content, "html.parser")
             anchors = soup.find_all("a")
@@ -346,10 +346,10 @@ def filter_links(domain_filters, u):
     return True
 
 
-def extract_links_series(http, domain_filters, url, html_content):
+def extract_links_series(http, domain_filters, url_prefix, url, html_content):
     up = urlparse(url)
     url = f"{up.scheme}://{up.netloc}"
-    links = extract_links(http, url, html_content)
+    links = extract_links(http, url, url_prefix, html_content)
     for l in links:
         if filter_links(domain_filters, l):
             yield l
@@ -361,22 +361,24 @@ def download_web_page_links(url, pdf):
     return pdf
 
 
-def generate_links_series(http, domain_filters, urls, contents):
+def generate_links_series(http, domain_filters, url_prefix, urls, contents):
     for t in zip(urls, contents):
-        yield extract_links_series(http, domain_filters, t[0], t[1])
+        yield extract_links_series(http, domain_filters, url_prefix, t[0], t[1])
 
 
 @pandas_udf("array<string>")
-def web_page_links(domain_filters, url, c):
+def web_page_links(domain_filters, url_prefix, url, c):
     dom_filt = None
     if not domain_filters.empty:
         dom_filt = domain_filters.iloc[0]
+    if not url_prefix.empty:
+        url_pf = url_prefix.iloc[0]
     adapter = HTTPAdapter(max_retries=retries, pool_connections=10, pool_maxsize=10)
     try:
         with requests.Session() as http:
             http.mount("http://", adapter)
             http.mount("https://", adapter)
-            links = generate_links_series(http, dom_filt, url, c)
+            links = generate_links_series(http, dom_filt, url_pf, url, c)
             return pd.Series(links)
     finally:
         adapter.close()
@@ -416,10 +418,10 @@ def fetch_html_udf(urls: pd.Series) -> pd.Series:
         adapter.close()
 
 
-def extract_text(http, html_content):
+def extract_text(http, url_prefix, html_content):
     if html_content:
         if http is not None:
-            html_content = fetch_html(http, html_content)
+            html_content = fetch_html(http, f"{url_prefix}{html_content}")
         if html_content:
             soup = BeautifulSoup(html_content, "html.parser")
             meta = soup.find("meta", itemprop="datePublished")
@@ -444,7 +446,9 @@ def extract_text(http, html_content):
 
 # Pandas UDF to process HTML content and extract text
 @pandas_udf("string")
-def download_web_page_udf(html_contents: pd.Series) -> pd.Series:
+def download_web_page_udf(url_prefix: pd.Series, html_contents: pd.Series) -> pd.Series:
+    if not url_prefix.empty:
+        url_pf = url_prefix.iloc[0]
     adapter = HTTPAdapter(max_retries=retries, pool_connections=200, pool_maxsize=200)
     try:
         with requests.Session() as http:
@@ -452,14 +456,14 @@ def download_web_page_udf(html_contents: pd.Series) -> pd.Series:
             http.mount("https://", adapter)
             with ThreadPoolExecutor(max_workers=200) as executor:
                 results = list(
-                    executor.map(lambda h: extract_text(http, h), html_contents)
+                    executor.map(lambda h: extract_text(http, url_pf, h), html_contents)
                 )
                 return pd.Series(results)
     finally:
         adapter.close()
 
 
-def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
+def build_url_dataframe(domain_filters, urls, url_prefix="", num_iterations_to_checkpoint=5):
     num_iterations_to_checkpoint = max(1, num_iterations_to_checkpoint)
     # Create DataFrame from URLs
     urls_rdd = sc.parallelize(urls, 5000)
@@ -481,7 +485,7 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
         count += 1
         df_with_links = df_with_html.select(
             col("url"),
-            web_page_links(lit(domain_filters), col("url"), col("html_content")).alias(
+            web_page_links(lit(domain_filters), lit(url_prefix), col("url"), col("html_content")).alias(
                 "href"
             ),
         )
@@ -522,7 +526,7 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     print("Iterations completed")
 
     final_df = final_df_with_html.withColumn(
-        "text", download_web_page_udf("html_content")
+        "text", download_web_page_udf(lit(url_prefix), col("html_content"))
     )
 
     # Select and filter non-null results
@@ -535,7 +539,7 @@ def build_url_dataframe(domain_filters, urls, num_iterations_to_checkpoint=5):
     return final_df
 
 
-def download_top_level_urls(url, max_documents=None):
+def download_top_level_urls(url, url_prefix="", max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
     if url.endswith(".xml") or url.endswith(".xml.gz"):
@@ -568,16 +572,16 @@ def download_top_level_urls(url, max_documents=None):
     return urls
 
 
-def download_documentation_articles(max_documents=None):
+def download_documentation_articles(url_prefix="", max_documents=None):
     sc.setCheckpointDir(spark_checkpoint_location)
     urls = [
         u
         for urls in [
-            download_top_level_urls(url, max_documents) for url in SITEMAP_URLS
+            download_top_level_urls(url, url_prefix, max_documents) for url in SITEMAP_URLS
         ]
         for u in urls
     ]
-    final_df = build_url_dataframe(accepted_domains, urls)
+    final_df = build_url_dataframe(accepted_domains, urls, url_prefix)
     return final_df
 
 # COMMAND ----------

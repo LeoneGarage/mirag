@@ -10,6 +10,7 @@ dbutils.widgets.text(
 dbutils.widgets.text(
     "schema_name", "", "Schema name where data and vector search are stored"
 )
+dbutils.widgets.text("url_prefix", "", "Useful to prefix urls with Google Cache to bypass anti-bot tech e.g. prefix with https://webcache.googleusercontent.com/search?q=cache:")
 
 # COMMAND ----------
 
@@ -74,9 +75,16 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
+url_prefix = dbutils.widgets.get("url_prefix")
+if url_prefix is None:
+  url_prefix = ""
+url_prefix = url_prefix.strip()
+
+# COMMAND ----------
+
 if not table_exists("raw_documentation") or spark.table("raw_documentation").isEmpty():
     # Download Databricks documentation to a DataFrame (see _resources/00-init for more details)
-    doc_articles = download_documentation_articles()
+    doc_articles = download_documentation_articles(url_prefix = url_prefix)
     # Save them as a raw_documentation table
     doc_articles.write.mode("overwrite").saveAsTable("raw_documentation")
 
