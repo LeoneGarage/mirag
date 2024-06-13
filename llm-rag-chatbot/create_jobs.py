@@ -35,10 +35,49 @@ rag_job_payload = {
     "max_concurrent_runs": 1,
     "tasks": [
         {
+            "task_key": "ingest_pdf_documents",
+            "run_if": "ALL_SUCCESS",
+            "notebook_task": {
+                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/01-PDF-Advanced-Data-Preparation",
+                "source": "WORKSPACE",
+            },
+            "job_cluster_key": "Job_cluster",
+            "timeout_seconds": 0,
+            "email_notifications": {},
+            "notification_settings": {
+                "no_alert_for_skipped_runs": False,
+                "no_alert_for_canceled_runs": False,
+                "alert_on_last_attempt": False,
+            },
+            "webhook_notifications": {},
+        },
+        {
             "task_key": "scrape_web_pages",
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
                 "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/01-quickstart/01-Data-Preparation-and-Index",
+                "base_parameters": {"url_prefix": ""},
+                "source": "WORKSPACE",
+            },
+            "job_cluster_key": "Job_cluster",
+            "timeout_seconds": 0,
+            "email_notifications": {},
+            "notification_settings": {
+                "no_alert_for_skipped_runs": False,
+                "no_alert_for_canceled_runs": False,
+                "alert_on_last_attempt": False,
+            },
+            "webhook_notifications": {},
+        },
+        {
+            "task_key": "create_vector_index",
+            "depends_on": [
+                {"task_key": "scrape_web_pages"},
+                {"task_key": "ingest_pdf_documents"},
+            ],
+            "run_if": "ALL_SUCCESS",
+            "notebook_task": {
+                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/Prepare-Vector-Search-Index",
                 "source": "WORKSPACE",
             },
             "job_cluster_key": "Job_cluster",
@@ -53,13 +92,11 @@ rag_job_payload = {
         },
         {
             "task_key": "create_model_chain",
-            "depends_on": [{"task_key": "scrape_web_pages"}],
+            "depends_on": [{"task_key": "create_vector_index"}],
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
                 "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/02-Advanced-Chatbot-Chain",
-                "base_parameters": {
-                    "model_prompt": model_prompt
-                },
+                "base_parameters": {"model_prompt": model_prompt},
                 "source": "WORKSPACE",
             },
             "job_cluster_key": "Job_cluster",
@@ -117,10 +154,7 @@ rag_job_payload = {
         {"name": "accepted_domains", "default": accepted_domains},
         {"name": "catalog", "default": catalog},
         {"name": "schema_name", "default": schema_name},
-        {
-            "name": "sitemap_urls",
-            "default": sitemap_urls,
-        },
+        {"name": "sitemap_urls", "default": sitemap_urls},
         {"name": "vs_endpoint_name", "default": vs_endpoint_name},
     ],
     "run_as": {"user_name": email},

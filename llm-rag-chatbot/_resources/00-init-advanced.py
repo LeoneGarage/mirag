@@ -1,4 +1,18 @@
 # Databricks notebook source
+dbutils.widgets.text("vs_endpoint_name", "", "Vector Search Endpoint Name")
+dbutils.widgets.text("sitemap_urls", "", "URLs separated by comma of sitemap.xml")
+dbutils.widgets.text(
+    "accepted_domains", "", "Domain part of urls to process, separated by comma"
+)
+dbutils.widgets.text(
+    "catalog", "", "Catalog name where data and vector search are stored"
+)
+dbutils.widgets.text(
+    "schema_name", "", "Schema name where data and vector search are stored"
+)
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC # init notebook setting up the backend. 
 # MAGIC
@@ -9,7 +23,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./00-init
+# MAGIC %run ./00-init $reset_all_data=$reset_all_data $vs_endpoint_name=$vs_endpoint_name $sitemap_urls=$sitemap_urls $accepted_domains=$accepted_domains $catalog=$catalog $schema_name=$schema_name
 
 # COMMAND ----------
 
@@ -27,22 +41,24 @@ def is_folder_empty(folder):
 import requests
 import collections
 import os
- 
-def download_file_from_git(dest, owner, repo, path):
-    def download_file(url, destination):
-      local_filename = url.split('/')[-1]
-      # NOTE the stream=True parameter below
-      with requests.get(url, stream=True) as r:
-          r.raise_for_status()
-          print('saving '+destination+'/'+local_filename)
-          with open(destination+'/'+local_filename, 'wb') as f:
-              for chunk in r.iter_content(chunk_size=8192): 
-                  # If you have chunk encoded response uncomment if
-                  # and set chunk_size parameter to None.
-                  #if chunk: 
-                  f.write(chunk)
-      return local_filename
 
+def download_file(url, destination):
+  local_filename = url.split('/')[-1]
+  # NOTE the stream=True parameter below
+  with requests.get(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                }, timeout=http_fetch_timeout_secs, stream=True) as r:
+      r.raise_for_status()
+      print('saving '+destination+'/'+local_filename)
+      with open(destination+'/'+local_filename, 'wb') as f:
+          for chunk in r.iter_content(chunk_size=None): 
+              # If you have chunk encoded response uncomment if
+              # and set chunk_size parameter to None.
+            if chunk: 
+              f.write(chunk)
+  return local_filename
+
+def download_file_from_git(dest, owner, repo, path):
     if not os.path.exists(dest):
       os.makedirs(dest)
     from concurrent.futures import ThreadPoolExecutor
