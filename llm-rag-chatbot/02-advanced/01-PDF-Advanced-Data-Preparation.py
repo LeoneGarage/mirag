@@ -85,6 +85,10 @@ volume_folder =  f"/Volumes/{catalog}/{db}/volume_documentation"
 
 # COMMAND ----------
 
+dbutils.fs.mkdirs(f"/Volumes/{catalog}/{db}/volume_documentation/pdfs")
+
+# COMMAND ----------
+
 # DBTITLE 1,Our pdf or docx files are available in our Volume (or DBFS)
 # List our raw PDF docs
 # Let's upload some pdf files to our volume as example. Change this with your own PDFs / docs.
