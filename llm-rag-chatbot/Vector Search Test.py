@@ -22,6 +22,10 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
+import math
+
+# COMMAND ----------
+
 from databricks.vector_search.client import VectorSearchClient
 vsc = VectorSearchClient()
 
@@ -143,8 +147,9 @@ else:
     served_models = [
         m
         for m in existing_endpoint.config.served_entities
-        if m.entity_name == model_name and m.entity_version != latest_model_version
+        if m.entity_name == model_name and int(m.entity_version) != latest_model_version
     ]
+    print(served_models)
     if len(served_models) > 0:
         print(
             f"Updating the endpoint {serving_endpoint_url} to version {latest_model_version}, this will take a few minutes to package and deploy the endpoint..."
@@ -152,6 +157,7 @@ else:
         w.serving_endpoints.update_config_and_wait(
             served_entities=endpoint_config.served_entities,
             name=serving_endpoint_name,
+            traffic_config=endpoint_config.traffic_config,
             timeout=timedelta(minutes=30),
         )
 
@@ -168,18 +174,20 @@ def get_embedding(contents: pd.Series) -> pd.Series:
     def get_embeddings(batch):
         #Note: this will fail if an exception is thrown during embedding creation (add try/except if needed) 
         response = deploy_client.predict(endpoint=serving_endpoint_name, inputs={"input": batch})
-        return [e['embedding'] for e in response.data]
+        for e in response.data:
+            yield e['embedding']
 
-    # Splitting the contents into batches of 150 items each, since the embedding model takes at most 150 inputs per request.
-    max_batch_size = 150
-    batches = [contents.iloc[i:i + max_batch_size] for i in range(0, len(contents), max_batch_size)]
+    def batch_embeddings(contents):
+        # Splitting the contents into batches of 150 items each, since the embedding model takes at most 150 inputs per request.
+        max_batch_size = 150
+        batches = [contents.iloc[i:i + max_batch_size] for i in range(0, len(contents), max_batch_size)]
 
-    # Process each batch and collect the results
-    all_embeddings = []
-    for batch in batches:
-        all_embeddings += get_embeddings(batch.tolist())
+        # Process each batch and collect the results
+        for batch in batches:
+            for e in get_embeddings(batch.tolist()):
+                yield e
 
-    return pd.Series(all_embeddings)
+    return pd.Series(batch_embeddings(contents))
 
 # COMMAND ----------
 
@@ -197,11 +205,12 @@ dbutils.fs.rm(f"dbfs:{volume_folder}/checkpoints/doc_index", True)
 
 # COMMAND ----------
 
-schema = spark.read.table("`safety-culture`.chatbot.documentation").schema
+schema_df = spark.read.table("`safety-culture`.chatbot.documentation")
+schema = schema_df.schema
 
 # COMMAND ----------
 
-doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repartition(128*10)
+doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repartition(int(math.ceil(schema_df.count() / 150)))
       .withColumn("embedding", get_embedding("content"))
       .mapInPandas(upsert_index_udf, schema=schema)
       .writeStream
