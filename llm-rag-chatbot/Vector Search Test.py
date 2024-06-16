@@ -227,5 +227,3 @@ doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repar
 elapsed_time_ns = time.time_ns() - start_time_ns
 
 print(f"Time taken = {elapsed_time_ns / 1000000000 / 60} minutes")
-# doc_df.write
-#     .table('pdf_documentation').awaitTermination())
