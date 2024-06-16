@@ -23,6 +23,7 @@ dbutils.widgets.text(
 # COMMAND ----------
 
 import math
+import time
 
 # COMMAND ----------
 
@@ -164,6 +165,7 @@ else:
 # COMMAND ----------
 
 volume_folder =  f"/Volumes/{catalog}/{db}/volume_documentation"
+embedding_batch_size = 150
 
 # COMMAND ----------
 
@@ -179,7 +181,7 @@ def get_embedding(contents: pd.Series) -> pd.Series:
 
     def batch_embeddings(contents):
         # Splitting the contents into batches of 150 items each, since the embedding model takes at most 150 inputs per request.
-        max_batch_size = 150
+        max_batch_size = embedding_batch_size
         batches = [contents.iloc[i:i + max_batch_size] for i in range(0, len(contents), max_batch_size)]
 
         # Process each batch and collect the results
@@ -207,10 +209,12 @@ dbutils.fs.rm(f"dbfs:{volume_folder}/checkpoints/doc_index", True)
 
 schema_df = spark.read.table("`safety-culture`.chatbot.documentation")
 schema = schema_df.schema
+row_count = schema_df.count()
 
 # COMMAND ----------
 
-doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repartition(int(math.ceil(schema_df.count() / 150)))
+start_time_ns = time.time_ns()
+doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repartition(int(math.ceil(row_count / embedding_batch_size)))
       .withColumn("embedding", get_embedding("content"))
       .mapInPandas(upsert_index_udf, schema=schema)
       .writeStream
@@ -220,5 +224,8 @@ doc_df = (spark.readStream.table("`safety-culture`.chatbot.documentation").repar
       .start()
       .awaitTermination())
 
+elapsed_time_ns = time.time_ns() - start_time_ns
+
+print(f"Time taken = {elapsed_time_ns / 1000000000 / 60} minutes")
 # doc_df.write
 #     .table('pdf_documentation').awaitTermination())
