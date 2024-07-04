@@ -13,7 +13,7 @@ dbutils.widgets.text("example_q4", "", "Example Question 4")
 
 # COMMAND ----------
 
-# MAGIC %pip install databricks-sdk==0.27.0 gradio
+# MAGIC %pip install databricks-sdk==0.27.0 gradio==4.36.1
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
