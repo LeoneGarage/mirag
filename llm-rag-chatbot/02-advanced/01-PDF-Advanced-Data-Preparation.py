@@ -98,6 +98,12 @@ dbutils.fs.mkdirs(f"/Volumes/{catalog}/{db}/volume_documentation/pdfs")
 
 # COMMAND ----------
 
+# If table doesn't exist also delete it's checkpoint
+if not table_exists("pdf_raw") or spark.table("pdf_raw").isEmpty():
+  dbutils.fs.rm(f'dbfs:{volume_folder}/checkpoints/raw_docs', True)
+
+# COMMAND ----------
+
 # DBTITLE 1,Ingesting PDF files as binary format using Databricks cloudFiles (Autoloader)
 df = (spark.readStream
         .format('cloudFiles')
@@ -326,6 +332,11 @@ def get_embedding(contents: pd.Series) -> pd.Series:
         all_embeddings += get_embeddings(batch.tolist())
 
     return pd.Series(all_embeddings)
+
+# COMMAND ----------
+
+if not table_exists("pdf_documentation") or spark.table("pdf_documentation").isEmpty():
+  dbutils.fs.rm(f'dbfs:{volume_folder}/checkpoints/pdf_chunk', True)
 
 # COMMAND ----------
 
