@@ -13,7 +13,7 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow==2.10.1 lxml transformers==4.30.2 langchain==0.1.5 databricks-vectorsearch==0.22 beautifulsoup4
+# MAGIC %pip install mlflow==2.12.1 lxml transformers==4.30.2 langchain==0.1.5 databricks-vectorsearch==0.22 beautifulsoup4
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
