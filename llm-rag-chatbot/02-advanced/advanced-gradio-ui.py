@@ -172,13 +172,7 @@ ci = gr.ChatInterface(
     clear_btn="Clear",
 )
 with gr.Blocks(css=css, theme=theme, fill_height=True) as demo:
-    gr.Image(
-        logo_url,
-        show_download_button=False,
-        show_label=False,
-        interactive=False,
-        elem_classes="top_image",
-    )
+    gr.HTML(f"<img src='{logo_url}' width='100' height='100'>")
     ci.render()
 
 demo.launch(share=True)
