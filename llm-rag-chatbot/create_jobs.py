@@ -14,8 +14,8 @@ model_prompt = f"You are a trustful assistant for {company_name} customers, as w
 # COMMAND ----------
 
 logo_url = ""
-example_q1 = "What is <Company Name>?"
-example_q2 = ""
+example_q1 = f"What is {company_name}?"
+example_q2 = "What questions can I ask?"
 example_q3 = ""
 example_q4 = ""
 
