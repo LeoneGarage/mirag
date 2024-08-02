@@ -15,7 +15,7 @@ model_prompt = f"You are a trustful assistant for {company_name} customers, as w
 
 logo_url = ""
 example_q1 = f"What is {company_name}?"
-example_q2 = "What questions can I ask?"
+example_q2 = "List questions I can ask?"
 example_q3 = ""
 example_q4 = ""
 
@@ -38,7 +38,7 @@ rag_job_payload = {
             "task_key": "ingest_pdf_documents",
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/01-PDF-Advanced-Data-Preparation",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/01-PDF-Advanced-Data-Preparation",
                 "source": "WORKSPACE",
             },
             "job_cluster_key": "Job_cluster",
@@ -55,7 +55,7 @@ rag_job_payload = {
             "task_key": "scrape_web_pages",
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/01-quickstart/01-Data-Preparation-and-Index",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/01-quickstart/01-Data-Preparation-and-Index",
                 "base_parameters": {"url_prefix": ""},
                 "source": "WORKSPACE",
             },
@@ -77,7 +77,7 @@ rag_job_payload = {
             ],
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/Prepare-Vector-Search-Index",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/Prepare-Vector-Search-Index",
                 "source": "WORKSPACE",
             },
             "job_cluster_key": "Job_cluster",
@@ -95,7 +95,7 @@ rag_job_payload = {
             "depends_on": [{"task_key": "create_vector_index"}],
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/02-Advanced-Chatbot-Chain",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/02-Advanced-Chatbot-Chain",
                 "base_parameters": {"model_prompt": model_prompt},
                 "source": "WORKSPACE",
             },
@@ -114,7 +114,7 @@ rag_job_payload = {
             "depends_on": [{"task_key": "create_model_chain"}],
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/04-Deploy-Model-as-Endpoint",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/04-Deploy-Model-as-Endpoint",
                 "source": "WORKSPACE",
             },
             "job_cluster_key": "Job_cluster",
@@ -173,7 +173,7 @@ bot_job_payload = {
             "task_key": "run-gradio-chat",
             "run_if": "ALL_SUCCESS",
             "notebook_task": {
-                "notebook_path": f"/Repos/{email}/mirag/llm-rag-chatbot/02-advanced/advanced-gradio-ui",
+                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/advanced-gradio-ui",
                 "base_parameters": {
                     "example_q3": example_q3,
                     "catalog": catalog,
