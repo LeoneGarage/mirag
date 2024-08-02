@@ -175,7 +175,10 @@ def empty_for_none(s):
 def split_html_on_h2(html, min_chunk_size=20, max_chunk_size=500):
     if not html:
         return []
-    h2_chunks = html_splitter.split_text(html)
+    try:
+        h2_chunks = html_splitter.split_text(html)
+    except:
+        h2_chunks = []
     chunks = []
     previous_chunk = ""
     # Merge chunks together to add text before h2 and avoid too small docs.
