@@ -437,6 +437,8 @@ def extract_text(http, url_prefix, html_content):
                         datetime.date.today() - timedelta(days=365)
                     ):
                         return None
+            for data in soup(['style', 'script', 'img']):
+                data.decompose()
             article_divs = soup.find_all(
                 "body"
             )  # soup.find("div", itemprop="articleBody")
