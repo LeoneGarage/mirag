@@ -271,15 +271,17 @@ retries = Retry(
 )
 
 
-def download_pages(http, root):
+def download_pages(http, root, visited_urls=[]):
     final_urls = []
     # Find all 'loc' elements (URLs) in the XML
     urls = [
         loc.text
         for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
+        if loc.text not in visited_urls
     ]
     for url in urls:
-        if url.endswith(".xml") or url.endswith(".xml.gz"):
+        res = urlparse(url)
+        if res and res.path and (res.path.endswith(".xml") or res.path.endswith(".xml.gz")):
             print(f"Downloading {url}")
             with http.get(
                 url,
@@ -293,7 +295,8 @@ def download_pages(http, root):
                 if ct and "application/x-gzip" in ct:
                     content = decompress(content)
                 root = ET.fromstring(content)
-            final_urls.extend(download_pages(http, root))
+            visited_urls.append(url)
+            final_urls.extend(download_pages(http, root, visited_urls))
         else:
             final_urls.append(url)
     return final_urls
@@ -340,16 +343,28 @@ def extract_links(http, url, url_prefix, html_content):
 def filter_links(domain_filters, u):
     if len(domain_filters) <= 0:
         return True
-    nl = urlparse(u).netloc
+    try:
+        nl = urlparse(u).netloc
+    except ValueError as e:
+        print(f"Error parsing url {u} - {e}")
+        return False
     if len([f for f in domain_filters if f == nl]) <= 0:
         return False
     return True
 
 
 def extract_links_series(http, domain_filters, url_prefix, url, html_content):
-    up = urlparse(url)
-    url = f"{up.scheme}://{up.netloc}"
-    links = extract_links(http, url, url_prefix, html_content)
+    try:
+        up = urlparse(url)
+        url_is_valid = True
+    except ValueError as e:
+        print(f"Error parsing url {url} - {e}")
+        url_is_valid = False
+    if url_is_valid:
+        url = f"{up.scheme}://{up.netloc}"
+        links = extract_links(http, url, url_prefix, html_content)
+    else:
+        links = []
     for l in links:
         if filter_links(domain_filters, l):
             yield l
@@ -535,7 +550,7 @@ def build_url_dataframe(domain_filters, urls, url_prefix="", num_iterations_to_c
     final_df = final_df.select("url", "text").filter("text IS NOT NULL").checkpoint()
     if final_df.isEmpty():
         raise Exception(
-            "Dataframe is empty, couldn't download Databricks documentation, please check sitemap status."
+            "Dataframe is empty, couldn't download pages, please check sitemap status."
         )
 
     return final_df
@@ -544,7 +559,8 @@ def build_url_dataframe(domain_filters, urls, url_prefix="", num_iterations_to_c
 def download_top_level_urls(url, url_prefix="", max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
-    if url.endswith(".xml") or url.endswith(".xml.gz"):
+    res = urlparse(url)
+    if res and res.path and (res.path.endswith(".xml") or res.path.endswith(".xml.gz")):
         adapter = HTTPAdapter(max_retries=retries)
         try:
             with requests.Session() as http:
