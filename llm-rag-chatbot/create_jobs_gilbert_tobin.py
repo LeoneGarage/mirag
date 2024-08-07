@@ -16,8 +16,8 @@ model_prompt = f"You are a trustful assistant for {company_name} customers, as w
 logo_url = "https://www.gtlaw.com.au/sites/default/files/GT_landscape_logo_positive_RBG_0.png"
 example_q1 = f"What is {company_name}?"
 example_q2 = "List questions I can ask?"
-example_q3 = "What information can you give me about {company_name} work with Guzman y Gomez"
-example_q4 = "Provide 300 words about {company_name} work with Blackstone on investment"
+example_q3 = "What information can you give me about {company_name} work with Guzman y Gomez?"
+example_q4 = "Please provide a paragraph about {company_name} work with Blackstone on investment"
 
 # COMMAND ----------
 
