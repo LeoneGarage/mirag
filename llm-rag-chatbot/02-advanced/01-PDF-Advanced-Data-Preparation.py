@@ -211,12 +211,14 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import Document, set_global_tokenizer
 from transformers import AutoTokenizer
 from typing import Iterator
+import nltk
 
 # Reduce the arrow batch size as our PDF can be big in memory
 spark.conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", 10)
 
 @pandas_udf("array<string>")
 def read_as_chunk(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
+    nltk.download("all")
     #set llama2 as tokenizer to match our model size (will stay below BGE 1024 limit)
     set_global_tokenizer(
       AutoTokenizer.from_pretrained("hf-internal-testing/llama-tokenizer")
