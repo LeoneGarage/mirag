@@ -37,6 +37,17 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
+from pyspark.sql.functions import pandas_udf, explode, posexplode, col, lit, when, row_number, max
+from pyspark.sql.window import Window
+import pandas as pd
+from delta.tables import *
+
+# COMMAND ----------
+
+volume_folder =  f"/Volumes/{catalog}/{db}/volume_documentation"
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC --Note that we need to enable Change Data Feed on the table to create the index
 # MAGIC CREATE TABLE IF NOT EXISTS documentation (
@@ -47,13 +58,58 @@ dbutils.widgets.text(
 
 # COMMAND ----------
 
-if not table_exists("documentation") or spark.table("documentation").isEmpty():
-    (
-        spark.table("web_documentation")
-        .unionAll(spark.table("pdf_documentation"))
-        .write.mode("overwrite")
-        .saveAsTable("documentation")
+def upsert_chunks(batch_df, batch_id):
+    deltaTable = DeltaTable.forName(spark, "documentation")
+    target_df = deltaTable.toDF().select("url", "content")
+    window = Window.partitionBy("url").orderBy(col("_commit_version").desc())
+    window_max = Window.partitionBy("url")
+    # Ensure the latest commit rows from change feed are used and emit max chunk index per url
+    batch_df = batch_df.select(col("*"), row_number().over(window).alias("rn")).where(col("rn") == 1).drop("rn").drop("_commit_version")
+    batch_df = batch_df.unionByName(
+        # find any rows in exists target dataset with the same url but are no longer in the incoming dataset, those need to be removed
+        target_df.join(batch_df, on=(batch_df.url == target_df.url), how="left_semi").withColumn("op", lit("D"))
     )
+    # now perform the merge
+    (
+        deltaTable.alias('target')
+            .merge(
+                batch_df.alias('source'),
+                    'target.url = source.url')
+            .whenMatchedDelete(condition = "source.op = 'D'")
+            .whenMatchedUpdate(set = {"url": "source.url", "content":"source.content"})
+            .whenNotMatchedInsert(condition = "source.op != 'D'", values = {"url": "source.url", "content":"source.content"})
+            .execute()
+    )
+
+# COMMAND ----------
+
+if not table_exists("documentation") or spark.table("documentation").isEmpty():
+    dbutils.fs.rm(f'dbfs:{volume_folder}/checkpoints/web_documentation', True)
+    dbutils.fs.rm(f'dbfs:{volume_folder}/checkpoints/pdf_documentation', True)
+
+# COMMAND ----------
+
+(
+  spark.readStream.table("web_documentation")
+  .writeStream
+    .trigger(availableNow=True)
+    .option("checkpointLocation", f'dbfs:{volume_folder}/checkpoints/web_documentation')
+    .toTable("documentation").awaitTermination()
+)
+
+(spark.readStream.option("readChangeFeed", "true").table('pdf_documentation')
+      .where("_change_type != 'update_preimage'")
+      .select(
+        col("url"),
+        col("content"),
+        when(col("_change_type") == "update_postimage", lit("U")).when(col("_change_type") == "delete", lit("D")).otherwise(lit("I")).alias("op"),
+        col("_commit_version")
+      )
+  .writeStream
+    .trigger(availableNow=True)
+    .foreachBatch(upsert_chunks)
+    .option("checkpointLocation", f'dbfs:{volume_folder}/checkpoints/pdf_documentation')
+    .start().awaitTermination())
 
 display(spark.table("documentation"))
 

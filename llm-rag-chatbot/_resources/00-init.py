@@ -559,6 +559,7 @@ def build_url_dataframe(domain_filters, urls, url_prefix="", num_iterations_to_c
 def download_top_level_urls(url, url_prefix="", max_documents=None):
     # Fetch the XML content from sitemap
     print(f"Downloading {url}")
+    urls = []
     res = urlparse(url)
     if res and res.path and (res.path.endswith(".xml") or res.path.endswith(".xml.gz")):
         adapter = HTTPAdapter(max_retries=retries)
