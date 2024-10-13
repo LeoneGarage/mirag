@@ -3,12 +3,12 @@ import requests
 
 # COMMAND ----------
 
-company_name = "<Company Name>" #Company name for which rag data and model is being generated
-accepted_domains = "<www.company-domain.com>" # Comma separated list of accepted domains to scrape, all other will be ignored, e.g. www.databricks.com for Databricks
-catalog = "<catalog name>" # Catalog name where rag data and model will live
+company_name = "Quantium" #Company name for which rag data and model is being generated
+accepted_domains = "quantium.com" # Comma separated list of accepted domains to scrape, all other will be ignored, e.g. www.databricks.com for Databricks
+catalog = "quantium" # Catalog name where rag data and model will live
 schema_name = "chatbot" # Schema name in catalog where rag data and model will live
-sitemap_urls = "<https://www.company-domain.com/sitemap.xml>" # Comma separated list
-vs_endpoint_name = "<Vector Search Index Endpoint name>" # e.g. vs_index
+sitemap_urls = "https://quantium.com/sitemap_index.xml" # Comma separated list
+vs_endpoint_name = "vs_endpoint" # e.g. vs_index
 model_prompt = f"You are a trustful assistant for {company_name} customers, as well as {company_name} company. You are answering questions about {company_name}, {company_name} concepts, {company_name} people, {company_name} company, {company_name} Applications, or other {company_name} topics and other information related to {company_name}. If {company_name} word appears by itself, assume the question is about the company. If {company_name} word is not in the question, assume the question is about {company_name} company and {company_name} related topics"
 
 # COMMAND ----------
@@ -133,7 +133,7 @@ rag_job_payload = {
             "job_cluster_key": "Job_cluster",
             "new_cluster": {
                 "cluster_name": "",
-                "spark_version": "15.4.x-scala2.12",
+                "spark_version": "14.3.x-scala2.12",
                 "aws_attributes": {
                     "first_on_demand": 1,
                     "availability": "SPOT_WITH_FALLBACK",
@@ -201,7 +201,7 @@ bot_job_payload = {
             "job_cluster_key": "Job_cluster",
             "new_cluster": {
                 "cluster_name": "",
-                "spark_version": "15.4.x-scala2.12",
+                "spark_version": "14.3.x-scala2.12",
                 "spark_conf": {
                     "spark.master": "local[*, 4]",
                     "spark.databricks.cluster.profile": "singleNode",
