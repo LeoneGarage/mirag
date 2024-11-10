@@ -272,11 +272,17 @@ retries = Retry(
 
 
 def download_pages(http, root, visited_urls=[]):
+    def safe_findall(root):
+      try:
+        return root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
+      except Exception as e:
+        print(str(e))
+        return []
     final_urls = []
     # Find all 'loc' elements (URLs) in the XML
     urls = [
         loc.text
-        for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
+        for loc in safe_findall(root)
         if loc.text not in visited_urls
     ]
     for url in urls:
@@ -294,9 +300,14 @@ def download_pages(http, root, visited_urls=[]):
                 content = response.content
                 if ct and "application/x-gzip" in ct:
                     content = decompress(content)
-                root = ET.fromstring(content)
+                try:
+                  root = ET.fromstring(content)
+                except Exception as e:
+                  print(str(e))
+                  root = None
             visited_urls.append(url)
-            final_urls.extend(download_pages(http, root, visited_urls))
+            if root is not None:
+              final_urls.extend(download_pages(http, root, visited_urls))
         else:
             final_urls.append(url)
     return final_urls
