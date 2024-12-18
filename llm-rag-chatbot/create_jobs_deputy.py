@@ -13,14 +13,6 @@ model_prompt = f"You are a trustful assistant for {company_name} customers, as w
 
 # COMMAND ----------
 
-logo_url = "https://lever-client-logos.s3.us-west-2.amazonaws.com/d20056fd-6295-4ec6-b809-a6477a1d79f0-1615158495863.png"
-example_q1 = f"What is {company_name}?"
-example_q2 = "List questions I can ask?"
-example_q3 = "What are some customer studies for Deputy?"
-example_q4 = "How can I do shift work scheduling?"
-
-# COMMAND ----------
-
 notebook_token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().getOrElse(None)
 email = spark.sql('select current_user() as user').collect()[0]['user']
 host = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
@@ -162,73 +154,6 @@ rag_job_payload = {
 
 # COMMAND ----------
 
-bot_job_payload = {
-    "name": f"{company_name} Chatbot",
-    "email_notifications": {"no_alert_for_skipped_runs": False},
-    "webhook_notifications": {},
-    "timeout_seconds": 0,
-    "max_concurrent_runs": 1,
-    "tasks": [
-        {
-            "task_key": "run-gradio-chat",
-            "run_if": "ALL_SUCCESS",
-            "notebook_task": {
-                "notebook_path": f"/Workspace/Users/{email}/mirag/llm-rag-chatbot/02-advanced/advanced-gradio-ui",
-                "base_parameters": {
-                    "example_q3": example_q3,
-                    "catalog": catalog,
-                    "example_q2": example_q2,
-                    "logo_url": logo_url,
-                    "schema_name": schema_name,
-                    "example_q1": example_q1,
-                    "example_q4": example_q4,
-                },
-                "source": "WORKSPACE",
-            },
-            "job_cluster_key": "Job_cluster",
-            "timeout_seconds": 0,
-            "email_notifications": {},
-            "notification_settings": {
-                "no_alert_for_skipped_runs": False,
-                "no_alert_for_canceled_runs": False,
-                "alert_on_last_attempt": False,
-            },
-            "webhook_notifications": {},
-        }
-    ],
-    "job_clusters": [
-        {
-            "job_cluster_key": "Job_cluster",
-            "new_cluster": {
-                "cluster_name": "",
-                "spark_version": "14.3.x-scala2.12",
-                "spark_conf": {
-                    "spark.master": "local[*, 4]",
-                    "spark.databricks.cluster.profile": "singleNode",
-                },
-                "aws_attributes": {
-                    "first_on_demand": 1,
-                    "availability": "SPOT_WITH_FALLBACK",
-                    "zone_id": "auto",
-                    "spot_bid_price_percent": 100,
-                    "ebs_volume_count": 0,
-                },
-                "node_type_id": "m5d.xlarge",
-                "driver_node_type_id": "m5d.xlarge",
-                "custom_tags": {"ResourceClass": "SingleNode"},
-                "spark_env_vars": {"PYSPARK_PYTHON": "/databricks/python3/bin/python3"},
-                "enable_elastic_disk": True,
-                "data_security_mode": "SINGLE_USER",
-                "runtime_engine": "STANDARD",
-                "num_workers": 0,
-            },
-        }
-    ],
-    "run_as": {"user_name": email},
-}
-
-# COMMAND ----------
-
 def send_job_request(action, request_func):
     api_url = host
     token = notebook_token
@@ -241,7 +166,3 @@ def send_job_request(action, request_func):
 # COMMAND ----------
 
 send_job_request('create', lambda u, h: requests.post(f'{u}', json=rag_job_payload, headers=h))
-
-# COMMAND ----------
-
-send_job_request('create', lambda u, h: requests.post(f'{u}', json=bot_job_payload, headers=h))
