@@ -77,7 +77,7 @@ prompt = PromptTemplate(
     template="You are an assistant. Give a detailed answer to this question: {question}",
 )
 chat_model = ChatDatabricks(
-    endpoint="databricks-dbrx-instruct",
+    endpoint="databricks-llama-4-maverick",
     max_tokens=500,
     temperature=0.8,
     extra_params={"top_p": 0.95},
@@ -176,7 +176,7 @@ print(
 
 # DBTITLE 1,Databricks Inquiry Classifier
 chat_model = ChatDatabricks(
-    endpoint="databricks-dbrx-instruct",
+    endpoint="databricks-llama-4-maverick",
     max_tokens=500,
     temperature=0.8,
     extra_params={"top_p": 0.95},
@@ -265,7 +265,7 @@ print(
 # COMMAND ----------
 
 chat_model = ChatDatabricks(
-    endpoint="databricks-dbrx-instruct",
+    endpoint="databricks-llama-4-maverick",
     max_tokens=500,
     temperature=0.8,
     extra_params={"top_p": 0.95},
@@ -277,10 +277,10 @@ You are classifying commands to determine if the user wants to use a different L
 Here are some examples:
 
 Command: Use DBRX
-Expected Response: databricks-dbrx-instruct
+Expected Response: databricks-llama-4-maverick
 
 Command: Use Databricks
-Expected Response: databricks-dbrx-instruct
+Expected Response: databricks-llama-4-maverick
 
 Command: Use Llama
 Expected Response: databricks-meta-llama-3-70b-instruct
@@ -288,7 +288,7 @@ Expected Response: databricks-meta-llama-3-70b-instruct
 Command: Use Mixtral
 Expected Response: databricks-mixtral-8x7b-instruct
 
-In all other cases respond with databricks-dbrx-instruct.
+In all other cases respond with databricks-llama-4-maverick.
 
 Only answer with with Databricks model endpoint name. 
 
@@ -485,7 +485,7 @@ question_with_history_and_context_prompt = PromptTemplate(
 )
 
 dbrx_model = ChatDatabricks(
-    endpoint="databricks-dbrx-instruct",
+    endpoint="databricks-llama-4-maverick",
     max_tokens=500,
     temperature=0.8,
     extra_params={"top_p": 0.95},

@@ -8,9 +8,9 @@ import requests
 from gradio.themes.utils import sizes
 
 serving_endpoint_name = os.getenv('SERVING_ENDPOINT')
-logo_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6SUsKbcAYGxshsp-ZH3af0_HyQ6dX-qj-eg&s"
-example_q1 = [""]
-example_q2 = [""]
+logo_url = "https://hydrogen-central.com/wp-content/uploads/2023/08/hydrogen-market-us.png"
+example_q1 = ["List questions I can ask about Ampol"]
+example_q2 = ["What is Ampol?"]
 example_q3 = [""]
 example_q4 = [""]
 
